@@ -1,7 +1,8 @@
 import streamlit as st
 import requests
 import PyPDF2
-import docx
+import docx as docx
+from docx import Document
 
 # ================== CONFIG ==================
 API_KEY = "AIzaSyCvBc3KyBMush9se3QDqEdUTMqgkxpRRS0"  # 🔑 Replace with your Gemini API key
@@ -146,3 +147,7 @@ elif task == "Quiz":
     if st.button("📝 Generate Quiz"):
         answer = query_gemini("Create a 5-question multiple-choice quiz with answers.")
         st.markdown(answer)
+elif uploaded_file.type == "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
+    doc = Document(uploaded_file)
+    for para in doc.paragraphs:
+        text += para.text + "\n"
