@@ -1,16 +1,64 @@
 import streamlit as st
 import requests
+import PyPDF2
+import docx
 
-# ==============================
-# API Setup
-# ==============================
-API_KEY = "AIzaSyCvBc3KyBMush9se3QDqEdUTMqgkxpRRS0"  # 🔑 Replace with your Gemini API Key
+# ================== CONFIG ==================
+API_KEY = "AIzaSyCvBc3KyBMush9se3QDqEdUTMqgkxpRRS0"  # 🔑 Replace with your Gemini API key
 API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent"
 
-# ==============================
-# Tutor Personality Instructions
-# ==============================
-TUTOR_INSTRUCTIONS = """You are a patient, encouraging, and supportive study tutor operating in "Study Mode."  
+st.set_page_config(page_title="📘 Study Mode Tutor", page_icon="📚")
+st.title("📘 Study Mode Tutor")
+st.markdown("AI Tutor with Study Modes, File Upload, ELI5, Flashcards & Quiz!")
+
+# ================== SESSION STATE ==================
+if "messages" not in st.session_state:
+    st.session_state["messages"] = []
+
+if "file_context" not in st.session_state:
+    st.session_state["file_context"] = ""
+
+# ================== SIDEBAR ==================
+st.sidebar.header("⚙️ Options")
+study_mode = st.sidebar.selectbox(
+    "Choose Study Mode:",
+    ["Beginner", "Practice", "Exam"]
+)
+eli5 = st.sidebar.checkbox("🍼 Explain Like I'm 5 (ELI5)")
+
+task = st.sidebar.radio(
+    "What would you like to do?",
+    ["Chat", "Flashcards", "Quiz"]
+)
+
+# ================== FILE UPLOAD ==================
+uploaded_file = st.file_uploader("📂 Upload study file (PDF, DOCX, TXT)", type=["pdf", "docx", "txt"])
+if uploaded_file is not None:
+    try:
+        text = ""
+
+        if uploaded_file.type == "application/pdf":
+            pdf_reader = PyPDF2.PdfReader(uploaded_file)
+            for page in pdf_reader.pages:
+                text += page.extract_text() or ""
+
+        elif uploaded_file.type == "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
+            doc = docx.Document(uploaded_file)
+            for para in doc.paragraphs:
+                text += para.text + "\n"
+
+        elif uploaded_file.type == "text/plain":
+            text = uploaded_file.read().decode("utf-8")
+
+        st.session_state["file_context"] = text
+        st.success("✅ File uploaded and processed successfully!")
+
+    except Exception as e:
+        st.error(f"⚠️ Could not read file: {e}")
+
+# ================== SYSTEM INSTRUCTIONS ==================
+SYSTEM_INSTRUCTIONS = """
+You are a patient, encouraging, and supportive study tutor operating in "Study Mode."
 Adopt a friendly, Socratic tone: guide the learner to discover answers rather than simply giving them away, praise attempts, and keep the learner engaged with short check-questions.
 
 Personality & Tone:
@@ -34,8 +82,7 @@ Core behavior rules:
    - For full solutions, show all steps clearly, then the final answer.
 3. After completing any full solution:
    - Celebrate success (e.g., "Well done, you solved it! 🎉").
-   - Always ask: "Would you like to try a similar practice problem to strengthen this skill?"  
-   - If the learner agrees, generate 1–2 practice problems of the same type and wait for them to attempt before giving answers.
+   - Always ask: "Would you like to try a similar practice problem to strengthen this skill?"
 4. Reinforcement & encouragement:
    - Praise correct steps: "Nice! Subtracting 3 is exactly right."
    - If the learner is incorrect, gently correct and explain why in simple terms.
@@ -48,105 +95,54 @@ Core behavior rules:
    - Do not provide help with harmful or disallowed content. Refuse politely.
 8. Formatting:
    - Use numbered steps, short sentences, and inline math (e.g., `2x + 3 = 11`).
+"""
 
-Example — user asks: “Solve 2x + 3 = 11”
-Model reply (encouraging & Socratic):
-Let’s work it out step by step together instead of me just blurting out the answer.  
-We’re solving: `2x + 3 = 11`.
-
-**Step 1:** To isolate `x`, we want to “get rid of” the `+3`.  
-What do you think we should do to both sides of the equation?
-
-(If learner replies “subtract 3”, continue:)
-Great — subtract 3 from both sides.
-
-**Step 2:** `2x + 3 - 3 = 11 - 3` → `2x = 8`.  
-What should we do next to find `x`?
-
-(If learner replies “divide by 2”, continue:)
-Nice! Divide both sides by 2.
-
-**Step 3:** `2x / 2 = 8 / 2` → `x = 4`.  
-Awesome — `x = 4` 🎉  
-Would you like to try a similar practice problem to make sure this sticks?"""
-
-# ==============================
-# Streamlit Page Config
-# ==============================
-st.set_page_config(page_title="📘 Study Mode Tutor", page_icon="📚")
-st.title("📘 Study Mode Tutor")
-st.markdown("Upload notes or just ask questions — your AI tutor will guide you step by step! ✨")
-
-# ==============================
-# Session State for Chat History
-# ==============================
-if "messages" not in st.session_state:
-    st.session_state["messages"] = []
-
-# ==============================
-# File Upload
-# ==============================
-uploaded_file = st.file_uploader("📂 Upload a file (TXT or PDF)", type=["txt", "pdf"])
-file_text = ""
-
-if uploaded_file:
-    if uploaded_file.type == "text/plain":
-        file_text = uploaded_file.read().decode("utf-8")
-    elif uploaded_file.type == "application/pdf":
-        try:
-            import PyPDF2
-            pdf_reader = PyPDF2.PdfReader(uploaded_file)
-            for page in pdf_reader.pages:
-                file_text += page.extract_text() + "\n"
-        except Exception as e:
-            st.error(f"⚠️ Could not read PDF: {e}")
-
-# ==============================
-# Display Chat History
-# ==============================
-for msg in st.session_state["messages"]:
-    if msg["role"] == "user":
-        st.chat_message("user").write(msg["content"])
-    elif msg["role"] == "model":
-        st.chat_message("assistant").write(msg["content"])
-
-# ==============================
-# Chat Input
-# ==============================
-user_input = st.chat_input("✏️ Ask me a question or type a problem...")
-
-if user_input:
-    # Show user message
-    st.chat_message("user").write(user_input)
-    st.session_state["messages"].append({"role": "user", "content": user_input})
-
-    # Prepare request
+# ================== HELPER FUNCTION ==================
+def query_gemini(prompt):
     headers = {"Content-Type": "application/json"}
     params = {"key": API_KEY}
-    data = {"contents": []}
 
-    # Add tutor persona
-    combined_prompt = TUTOR_INSTRUCTIONS
-    if file_text:
-        combined_prompt += f"\n\nHere is study material provided by the learner:\n{file_text[:3000]}"
+    # Combine context
+    full_prompt = SYSTEM_INSTRUCTIONS + "\n\n"
+    if st.session_state["file_context"]:
+        full_prompt += "Context from uploaded file:\n" + st.session_state["file_context"][:4000] + "\n\n"
+    full_prompt += f"Mode: {study_mode}\n"
+    if eli5:
+        full_prompt += "Explain in ELI5 style (super simple).\n\n"
+    full_prompt += "Task: " + prompt
 
-    data["contents"].append({"role": "user", "parts": [{"text": combined_prompt}]})
+    data = {
+        "contents": [{"role": "user", "parts": [{"text": full_prompt}]}]
+    }
 
-    # Add chat history
-    for m in st.session_state["messages"]:
-        data["contents"].append({"role": m["role"], "parts": [{"text": m["content"]}]})
-
-    # Call Gemini
     response = requests.post(API_URL, headers=headers, params=params, json=data)
 
     if response.status_code == 200:
-        output = response.json()
         try:
-            answer = output["candidates"][0]["content"]["parts"][0]["text"]
-            st.session_state["messages"].append({"role": "model", "content": answer})
-            st.chat_message("assistant").write(answer)
+            output = response.json()
+            return output["candidates"][0]["content"]["parts"][0]["text"]
         except Exception:
-            st.error("⚠️ Unexpected response format")
-            st.json(output)
+            return f"⚠️ Unexpected response format: {response.json()}"
     else:
-        st.error(f"❌ Error {response.status_code}: {response.text}")
+        return f"❌ Error {response.status_code}: {response.text}"
+
+# ================== MAIN ==================
+if task == "Chat":
+    user_input = st.chat_input("✏️ Ask me a question...")
+    if user_input:
+        st.session_state["messages"].append({"role": "user", "content": user_input})
+        st.chat_message("user").write(user_input)
+
+        answer = query_gemini(user_input)
+        st.session_state["messages"].append({"role": "assistant", "content": answer})
+        st.chat_message("assistant").write(answer)
+
+elif task == "Flashcards":
+    if st.button("📌 Generate Flashcards"):
+        answer = query_gemini("Create 10 flashcards (Q & A) from the content.")
+        st.markdown(answer)
+
+elif task == "Quiz":
+    if st.button("📝 Generate Quiz"):
+        answer = query_gemini("Create a 5-question multiple-choice quiz with answers.")
+        st.markdown(answer)
