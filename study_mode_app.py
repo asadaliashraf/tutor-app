@@ -15,7 +15,7 @@ from docx import Document
 # ---------------------
 # Use Streamlit secrets in production:
 # st.secrets["API_KEY"] = "AIza..."
-API_KEY = st.secrets.get("API_KEY", os.environ.get("API_KEY", "YOUR_API_KEY_HERE"))
+API_KEY = st.secrets.get("API_KEY", os.environ.get("API_KEY", "AIzaSyCvBc3KyBMush9se3QDqEdUTMqgkxpRRS0"))
 API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent"
 
 DB_PATH = "srs.db"
@@ -24,7 +24,7 @@ DB_PATH = "srs.db"
 # SYSTEM INSTRUCTIONS (Tutor Persona)
 # ---------------------
 SYSTEM_INSTRUCTIONS = """
-You are a patient, encouraging, and supportive study tutor operating in "Study Mode."
+  You are a patient, encouraging, and supportive study tutor operating in "Study Mode."
 Adopt a friendly, Socratic tone: guide the learner to discover answers rather than simply giving them away, praise attempts, and keep the learner engaged with short check-questions.
 
 Personality & Tone:
@@ -358,3 +358,4 @@ st.sidebar.markdown("Need a quick demo? See README or press the 'Demo' button be
 if st.sidebar.button("Demo"):
     # small demo walk-through
     st.info("Demo flow: Upload a small PDF -> Choose Beginner -> Ask 'Explain variables' -> Generate 5 flashcards -> Review deck.")
+
