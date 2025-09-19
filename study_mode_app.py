@@ -182,41 +182,107 @@ def extract_text_from_file(uploaded_file):
 # ---------------------------
 # Gemini query helper (adds system instructions + mode context)
 # ---------------------------
-def query_gemini(task_prompt, messages=None, extra_instructions=""):
+# ---------------------------
+# Gemini query helper (adds system instructions + mode context)
+# ---------------------------
+def query_gemini(
+    task_prompt,
+    messages=None,
+    file_context="",
+    difficulty="Intermediate",
+    study_mode="Practice",
+    eli5=False,
+    quick_answer=False,
+    expect_json=False,
+    extra_instructions="",
+    timeout=60,
+):
+    if not API_KEY:
+        return "ERROR: API key not configured."
+
     headers = {"Content-Type": "application/json"}
     params = {"key": API_KEY}
 
-    # Build conversation history if provided
+    # Build conversation history
     conversation = ""
     if messages:
         for m in messages:
-            role = m["role"]
-            content = m["content"]
+            if isinstance(m, (list, tuple)) and len(m) == 2:
+                role, content = m
+            elif isinstance(m, dict):
+                role = m.get("role", "user")
+                content = m.get("content", "")
+            else:
+                role, content = "user", str(m)
             conversation += f"{role.upper()}: {content}\n"
 
-    # Prepare final text to send
+    # Mode & style
+    mode_text = f"StudyMode: {study_mode}. Difficulty: {difficulty}. QuickAnswer: {'Yes' if quick_answer else 'No'}. ELI5: {'Yes' if eli5 else 'No'}."
+    style_extra = ""
+    if eli5:
+        style_extra += "Use simple analogies, short sentences, no jargon.\n"
+    if quick_answer:
+        style_extra += "Start with a concise direct answer, then expand if needed.\n"
+    if extra_instructions:
+        style_extra += extra_instructions + "\n"
+
+    # JSON mode
+    json_instruction = ""
+    if expect_json:
+        json_instruction = (
+            "IMPORTANT: Respond with only valid JSON. "
+            "Top-level must be an object. Examples:\n"
+            '{"flashcards":[{"q":"...","a":"..."}]}\n'
+            '{"quiz":[{"q":"...","options":["a","b","c","d"],"answerIndex":0,"hint":"..."}]}\n'
+        )
+
+    # Final prompt assembly
     final_prompt = (
-        SYSTEM_PROMPT
+        SYSTEM_INSTRUCTIONS
         + "\n\n"
-        + extra_instructions
+        + mode_text
+        + "\n\n"
+        + style_extra
         + "\n\n"
         + conversation
-        + "\nUSER: "
-        + task_prompt
     )
+    if file_context:
+        final_prompt += "Context from uploaded file:\n" + file_context[:4000] + "\n\n"
+    if json_instruction:
+        final_prompt += json_instruction + "\n"
+    final_prompt += "Task: " + str(task_prompt)
 
-    data = {"contents": [{"parts": [{"text": final_prompt}]}]}
+    data = {"contents": [{"role": "user", "parts": [{"text": final_prompt}]}]}
 
-    response = requests.post(API_URL, headers=headers, params=params, json=data)
+    # Request
+    try:
+        resp = requests.post(API_URL, headers=headers, params=params, json=data, timeout=timeout)
+    except requests.exceptions.RequestException as e:
+        return f"ERROR: Request failed: {e}"
 
-    if response.status_code == 200:
-        output = response.json()
+    if resp.status_code != 200:
+        return f"ERROR {resp.status_code}: {resp.text}"
+
+    try:
+        body = resp.json()
+        text = body["candidates"][0]["content"]["parts"][0]["text"]
+    except Exception:
+        return f"ERROR: Unexpected response: {resp.text}"
+
+    if expect_json:
         try:
-            return output["candidates"][0]["content"]["parts"][0]["text"]
+            return json.loads(text)
         except Exception:
-            return "⚠️ Unexpected response format"
-    else:
-        return f"❌ Error {response.status_code}: {response.text}"
+            start, end = text.find("{"), text.rfind("}")
+            if start != -1 and end != -1 and end > start:
+                snippet = text[start:end+1]
+                try:
+                    return json.loads(snippet)
+                except Exception:
+                    return {"_raw": text}
+            return {"_raw": text}
+    return text
+
     # If expecting structured output, instruct JSON
     json_instruction = ""
     if expect_json:
@@ -549,4 +615,5 @@ elif section == "Demo Flow":
 # ---------------------------
 st.sidebar.markdown("---")
 st.sidebar.markdown("Made for study. Keep API key secure. For deployment: set secrets or env var `API_KEY`.")
+
 
