@@ -182,25 +182,41 @@ def extract_text_from_file(uploaded_file):
 # ---------------------------
 # Gemini query helper (adds system instructions + mode context)
 # ---------------------------
-def query_gemini(task_prompt, file_context="", difficulty="Intermediate", study_mode="Practice", eli5=False, quick_answer=False, expect_json=False, json_key=None, timeout=60):
-    """
-    Compose a full prompt and call the Gemini endpoint.
-    - expect_json: if True, instruct the model to output JSON and try to parse it.
-    - json_key: optional top-level key expected (not required).
-    """
-    if not API_KEY:
-        return "ERROR: API key is not configured."
-
+def query_gemini(task_prompt, messages=None, extra_instructions=""):
     headers = {"Content-Type": "application/json"}
     params = {"key": API_KEY}
 
-    mode_text = f"StudyMode: {study_mode}. Difficulty: {difficulty}. QuickAnswer: {'Yes' if quick_answer else 'No'}. ELI5: {'Yes' if eli5 else 'No'}."
-    extra = ""
-    if eli5:
-        extra += "Use very simple analogies, short sentences, avoid jargon.\n"
-    if quick_answer:
-        extra += "Provide a short direct answer first, then offer to explain step-by-step only if asked.\n"
+    # Build conversation history if provided
+    conversation = ""
+    if messages:
+        for m in messages:
+            role = m["role"]
+            content = m["content"]
+            conversation += f"{role.upper()}: {content}\n"
 
+    # Prepare final text to send
+    final_prompt = (
+        SYSTEM_PROMPT
+        + "\n\n"
+        + extra_instructions
+        + "\n\n"
+        + conversation
+        + "\nUSER: "
+        + task_prompt
+    )
+
+    data = {"contents": [{"parts": [{"text": final_prompt}]}]}
+
+    response = requests.post(API_URL, headers=headers, params=params, json=data)
+
+    if response.status_code == 200:
+        output = response.json()
+        try:
+            return output["candidates"][0]["content"]["parts"][0]["text"]
+        except Exception:
+            return "⚠️ Unexpected response format"
+    else:
+        return f"❌ Error {response.status_code}: {response.text}"
     # If expecting structured output, instruct JSON
     json_instruction = ""
     if expect_json:
@@ -533,3 +549,4 @@ elif section == "Demo Flow":
 # ---------------------------
 st.sidebar.markdown("---")
 st.sidebar.markdown("Made for study. Keep API key secure. For deployment: set secrets or env var `API_KEY`.")
+
