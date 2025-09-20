@@ -153,12 +153,11 @@ elif section == "Flashcards":
         gen = st.form_submit_button("Generate Flashcards")
 
     if gen:
-    context = file_content if not topic else topic
-    reply = query_gemini(
-        f"Generate {num} flashcards as JSON list with 'q' and 'a'.",
-        context=context,
-        extra_instructions=extra_instructions
-    )
+        context = file_content if not topic else topic
+        reply = query_gemini(
+            f"Generate {num} flashcards as JSON list with 'q' and 'a'.",
+            context=context,
+            extra_instructions=extra_instructions)
     cards = extract_json(reply)
     if cards:
         st.session_state["flashcards_local"] = cards
@@ -247,5 +246,6 @@ elif section == "Quiz":
 elif section == "SRS Review":
     st.header("📚 Spaced Repetition Review")
     st.info("Future enhancement: review flashcards with scheduling.")
+
 
 
