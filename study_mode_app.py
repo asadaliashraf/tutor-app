@@ -146,6 +146,7 @@ if section == "Chat":
     user_input = st.text_input("Type your message here...")
 
     if st.button("Send") and user_input.strip():
+
         # Save user message
         st.session_state.chat_history.append({"role": "user", "content": user_input})
 
@@ -308,6 +309,7 @@ elif section == "Quiz":
 elif section == "SRS Review":
     st.header("📚 Spaced Repetition Review")
     st.info("Future enhancement: review flashcards with scheduling.")
+
 
 
 
