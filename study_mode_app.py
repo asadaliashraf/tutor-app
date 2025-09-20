@@ -128,20 +128,84 @@ file_content = read_file(uploaded_file) if uploaded_file else ""
 # -------------------------------
 # SECTION: TUTOR CHAT
 # -------------------------------
-if section == "Tutor Chat":
-    st.header("💬 Tutor Chat")
-    user_msg = st.chat_input("Ask a question...")
-    if user_msg:
-        st.session_state["messages"].append({"role": "user", "content": user_msg})
-        with st.spinner("Thinking..."):
-            reply = query_gemini(user_msg, context=file_content, mode=study_mode, difficulty=difficulty)
-        st.session_state["messages"].append({"role": "assistant", "content": reply})
+if section == "Chat":
+    st.header("💬 Study Chat")
 
-    for msg in st.session_state["messages"]:
+    # Initialize memory for chat
+    if "chat_history" not in st.session_state:
+        st.session_state.chat_history = []
+
+    # Show past chat
+    for msg in st.session_state.chat_history:
         if msg["role"] == "user":
-            st.chat_message("user").write(msg["content"])
+            st.markdown(f"👤 **You:** {msg['content']}")
         else:
-            st.chat_message("assistant").write(msg["content"])
+            st.markdown(f"🤖 **Tutor:** {msg['content']}")
+
+    # Input box
+    user_input = st.text_input("Type your message here...")
+
+    if st.button("Send") and user_input.strip():
+        # Save user message
+        st.session_state.chat_history.append({"role": "user", "content": user_input})
+
+        # Build conversation string for context
+        conversation = ""
+        for msg in st.session_state.chat_history:
+            role = "You" if msg["role"] == "user" else "Tutor"
+            conversation += f"{role}: {msg['content']}\n"
+
+        # Auto-adjust style based on study mode
+        if study_mode == "Practice":
+            mode_instructions = """
+            Use step-by-step reasoning, hints, and check-questions. 
+            Encourage the learner after each attempt. 
+            Avoid giving the final answer too quickly.
+            """
+        elif study_mode == "Exam":
+            mode_instructions = """
+            Be concise and direct. 
+            Provide the final answer quickly with minimal hints. 
+            No unnecessary encouragement or filler.
+            """
+        else:  # default/fallback
+            mode_instructions = "Be a supportive tutor with balanced explanations."
+
+        # Difficulty level adjustments
+        if difficulty == "Beginner":
+            diff_instructions = "Explain in the simplest possible way, using ELI5 style when possible."
+        elif difficulty == "Intermediate":
+            diff_instructions = "Use moderate detail, assume some prior knowledge but still explain clearly."
+        elif difficulty == "Advanced":
+            diff_instructions = "Use technical terms, more depth, and challenge the learner with complex reasoning."
+        else:
+            diff_instructions = ""
+
+        extra_instructions = f"""
+        Current settings:
+        - Study Mode: {study_mode}
+        - Difficulty: {difficulty}
+
+        Please continue the conversation following these settings.
+        {mode_instructions}
+        {diff_instructions}
+        """
+
+        # Call Gemini model
+        reply = query_gemini(
+            task_prompt=conversation,
+            system_instruction=SYSTEM_INSTRUCTIONS,
+            extra_instructions=extra_instructions
+        )
+
+        # Save assistant reply
+        st.session_state.chat_history.append({"role": "assistant", "content": reply})
+
+        # Display latest reply immediately
+        st.markdown(f"🤖 **Tutor:** {reply}")
+
+        # Refresh to update UI
+        st.rerun()
 
 # -------------------------------
 # SECTION: FLASHCARDS
@@ -244,6 +308,7 @@ elif section == "Quiz":
 elif section == "SRS Review":
     st.header("📚 Spaced Repetition Review")
     st.info("Future enhancement: review flashcards with scheduling.")
+
 
 
 
