@@ -128,7 +128,7 @@ file_content = read_file(uploaded_file) if uploaded_file else ""
 # -------------------------------
 # SECTION: TUTOR CHAT
 # -------------------------------
-elif section == "Chat":
+if section == "Chat":
     st.header("💬 Study Chat")
 
     # Keep chat history
@@ -257,6 +257,7 @@ elif section == "Quiz":
 elif section == "SRS Review":
     st.header("📚 Spaced Repetition Review")
     st.info("Future enhancement: review flashcards with scheduling.")
+
 
 
 
