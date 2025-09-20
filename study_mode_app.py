@@ -18,7 +18,7 @@ st.title("📘 Study Mode Tutor")
 st.markdown("Your AI tutor with Study Mode, Flashcards, Quizzes & more 🚀")
 
 # -------------------------------
-# SESSION STATE
+# SESSION STATE (ensure chat_history exists)
 # -------------------------------
 if "messages" not in st.session_state:
     st.session_state["messages"] = []
@@ -28,6 +28,10 @@ if "flashcards_local" not in st.session_state:
 
 if "quiz_local" not in st.session_state:
     st.session_state["quiz_local"] = []
+
+# Ensure chat_history is present (this is what the Chat section uses)
+if "chat_history" not in st.session_state:
+    st.session_state["chat_history"] = []
 
 # -------------------------------
 # SYSTEM INSTRUCTIONS
@@ -81,6 +85,7 @@ IMPORTANT: Respond ONLY with valid JSON for Flashcards and Quizzes not for Chat.
 - Do not wrap in code blocks.
 - For Chat do not use JSON 
 """
+
 # -------------------------------
 # HELPERS
 # -------------------------------
@@ -128,34 +133,56 @@ file_content = read_file(uploaded_file) if uploaded_file else ""
 # -------------------------------
 # SECTION: TUTOR CHAT
 # -------------------------------
-if section == "Chat":
+# NOTE: matching the sidebar label "Tutor Chat" exactly
+if section == "Tutor Chat":
     st.header("💬 Study Chat")
 
-    # Keep chat history
-    if "chat_history" not in st.session_state:
-        st.session_state.chat_history = []
-
-    # Show previous messages
-    for msg in st.session_state.chat_history:
+    # Keep chat history (already initialized at top)
+    # Display existing messages (user/assistant)
+    for msg in st.session_state["chat_history"]:
+        # st.chat_message expects role "user" or "assistant"
         with st.chat_message(msg["role"]):
             st.markdown(msg["content"])
 
-    # Input bar at bottom
+    # Chat input bar (sticky at bottom)
     user_input = st.chat_input("Type your message here...")
 
     if user_input:
-        # Show user message
-        st.session_state.chat_history.append({"role": "user", "content": user_input})
+        # append user message to history and display it
+        st.session_state["chat_history"].append({"role": "user", "content": user_input})
         with st.chat_message("user"):
             st.markdown(user_input)
 
-        # --- Call Gemini or your model here ---
-        reply = f"Echo: {user_input}"  # placeholder for model response
+        # build conversation to send to model (full history)
+        conversation = ""
+        for msg in st.session_state["chat_history"]:
+            role = "You" if msg["role"] == "user" else "Tutor"
+            conversation += f"{role}: {msg['content']}\n"
 
-        # Save and show assistant message
-        st.session_state.chat_history.append({"role": "assistant", "content": reply})
+        # Build extra instructions honoring study_mode and difficulty
+        if study_mode == "practice":
+            mode_instructions = "Use step-by-step reasoning, hints, and check-questions. Encourage the learner."
+        else:
+            mode_instructions = "Be concise and direct; minimal hints (exam style)."
+
+        if difficulty == "beginner":
+            diff_instructions = "Explain simply and use analogies (ELI5)."
+        elif difficulty == "intermediate":
+            diff_instructions = "Use moderate detail and examples."
+        else:
+            diff_instructions = "Use technical terms and deeper explanations."
+
+        extra_instructions = f"Study Mode: {study_mode}. Difficulty: {difficulty}. {mode_instructions} {diff_instructions}"
+
+        # Call the model (you can route to real query)
+        with st.spinner("Thinking..."):
+            reply = query_gemini(conversation, context=file_content, mode=study_mode, difficulty=difficulty)
+
+        # append assistant reply and display
+        st.session_state["chat_history"].append({"role": "assistant", "content": reply})
         with st.chat_message("assistant"):
             st.markdown(reply)
+
 # -------------------------------
 # SECTION: FLASHCARDS
 # -------------------------------
@@ -168,11 +195,26 @@ elif section == "Flashcards":
 
     if gen:
         context = file_content if not topic else topic
-        reply = query_gemini(f"Generate {num} flashcards as JSON list with 'q' and 'a'.", context=context)
-        try:
-            cards = json.loads(reply)
+        # instruct model to output JSON array for flashcards (best-effort)
+        extra_instructions = (
+            "IMPORTANT: Respond ONLY with valid JSON array of objects "
+            'like [{"q":"question","a":"answer"}, ...]. No extra text.'
+        )
+        reply = query_gemini(f"Generate {num} flashcards as JSON list with 'q' and 'a'.", context=context, mode=study_mode, difficulty=difficulty)
+        # try to extract JSON block
+        import re
+        def extract_json_block(text):
+            m = re.search(r"(\[.*\])", text, re.DOTALL)
+            if not m:
+                return None
+            try:
+                return json.loads(m.group(1))
+            except:
+                return None
+        cards = extract_json_block(reply)
+        if cards:
             st.session_state["flashcards_local"] = cards
-        except:
+        else:
             st.error("⚠️ Could not parse flashcards. Showing raw output.")
             st.write(reply)
 
@@ -185,13 +227,12 @@ elif section == "Flashcards":
         idx = st.session_state["flashcard_idx"]
         card = cards[idx]
 
-        st.markdown(f"**Q:** {card['q']}")
-
+        st.markdown(f"**Q:** {card.get('q')}")
         if not st.session_state["show_answer"]:
             if st.button("Show Answer"):
                 st.session_state["show_answer"] = True
         else:
-            st.info(card["a"])
+            st.info(card.get("a"))
             col1, col2 = st.columns(2)
             with col1:
                 if st.button("✅ I got it"):
@@ -214,17 +255,26 @@ elif section == "Quiz":
 
     if gen:
         context = file_content if not topic else topic
-        reply = query_gemini(f"Generate {n} multiple-choice quiz questions in JSON. Each with 'q','options','answerIndex'.", context=context)
-        try:
-            qlist = json.loads(reply)
+        reply = query_gemini(f"Generate {n} multiple-choice quiz questions in JSON. Each with 'q','options','answerIndex'.", context=context, mode=study_mode, difficulty=difficulty)
+        import re
+        def extract_json_block(text):
+            m = re.search(r"(\[.*\])", text, re.DOTALL)
+            if not m:
+                return None
+            try:
+                return json.loads(m.group(1))
+            except:
+                return None
+        qlist = extract_json_block(reply)
+        if qlist:
             st.session_state["quiz_local"] = qlist
             st.session_state["quiz_idx"] = 0
             st.session_state["quiz_score"] = 0
-        except:
+        else:
             st.error("⚠️ Could not parse quiz. Showing raw output.")
             st.write(reply)
 
-    if st.session_state["quiz_local"]:
+    if st.session_state.get("quiz_local"):
         idx = st.session_state.get("quiz_idx", 0)
         qlist = st.session_state["quiz_local"]
 
@@ -257,12 +307,3 @@ elif section == "Quiz":
 elif section == "SRS Review":
     st.header("📚 Spaced Repetition Review")
     st.info("Future enhancement: review flashcards with scheduling.")
-
-
-
-
-
-
-
-
-
