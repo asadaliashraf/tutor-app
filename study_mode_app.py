@@ -128,84 +128,32 @@ file_content = read_file(uploaded_file) if uploaded_file else ""
 # -------------------------------
 # SECTION: TUTOR CHAT
 # -------------------------------
-if section == "Chat":
+elif section == "Chat":
     st.header("💬 Study Chat")
 
-    # Initialize memory for chat
+    # Keep chat history
     if "chat_history" not in st.session_state:
         st.session_state.chat_history = []
 
-    # Show past chat
+    # Show previous messages
     for msg in st.session_state.chat_history:
-        if msg["role"] == "user":
-            with st.chat_message("user"):
-                st.markdown(msg["content"])
-        else:
-            with st.chat_message("assistant"):
-                st.markdown(msg["content"])
+        with st.chat_message(msg["role"]):
+            st.markdown(msg["content"])
 
-    # Chat input bar (sticky at bottom)
+    # Input bar at bottom
     user_input = st.chat_input("Type your message here...")
 
     if user_input:
-        # Save user message
+        # Show user message
         st.session_state.chat_history.append({"role": "user", "content": user_input})
         with st.chat_message("user"):
             st.markdown(user_input)
 
-        # Build conversation string for context
-        conversation = ""
-        for msg in st.session_state.chat_history:
-            role = "You" if msg["role"] == "user" else "Tutor"
-            conversation += f"{role}: {msg['content']}\n"
+        # --- Call Gemini or your model here ---
+        reply = f"Echo: {user_input}"  # placeholder for model response
 
-        # Auto-adjust style based on study mode
-        if study_mode == "Practice":
-            mode_instructions = """
-            Use step-by-step reasoning, hints, and check-questions. 
-            Encourage the learner after each attempt. 
-            Avoid giving the final answer too quickly.
-            """
-        elif study_mode == "Exam":
-            mode_instructions = """
-            Be concise and direct. 
-            Provide the final answer quickly with minimal hints. 
-            No unnecessary encouragement or filler.
-            """
-        else:  # default/fallback
-            mode_instructions = "Be a supportive tutor with balanced explanations."
-
-        # Difficulty level adjustments
-        if difficulty == "Beginner":
-            diff_instructions = "Explain in the simplest possible way, using ELI5 style when possible."
-        elif difficulty == "Intermediate":
-            diff_instructions = "Use moderate detail, assume some prior knowledge but still explain clearly."
-        elif difficulty == "Advanced":
-            diff_instructions = "Use technical terms, more depth, and challenge the learner with complex reasoning."
-        else:
-            diff_instructions = ""
-
-        extra_instructions = f"""
-        Current settings:
-        - Study Mode: {study_mode}
-        - Difficulty: {difficulty}
-
-        Please continue the conversation following these settings.
-        {mode_instructions}
-        {diff_instructions}
-        """
-
-        # Call Gemini model
-        reply = query_gemini(
-            task_prompt=conversation,
-            system_instruction=SYSTEM_INSTRUCTIONS,
-            extra_instructions=extra_instructions
-        )
-
-        # Save assistant reply
+        # Save and show assistant message
         st.session_state.chat_history.append({"role": "assistant", "content": reply})
-
-        # Display latest reply
         with st.chat_message("assistant"):
             st.markdown(reply)
 # -------------------------------
@@ -309,6 +257,7 @@ elif section == "Quiz":
 elif section == "SRS Review":
     st.header("📚 Spaced Repetition Review")
     st.info("Future enhancement: review flashcards with scheduling.")
+
 
 
 
