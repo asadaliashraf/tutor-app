@@ -194,55 +194,39 @@ elif section == "Flashcards":
 # -------------------------------
 # SECTION: QUIZ
 # -------------------------------
+# Quiz Section
 elif section == "Quiz":
-    st.header("📝 Quiz Generator")
-    with st.form("quiz_form"):
-        topic = st.text_input("Topic (leave empty to use uploaded file content)")
-        n = st.slider("Number of questions", 3, 10, 5)
-        gen = st.form_submit_button("Generate Quiz")
+    st.subheader("📚 Quiz Generator")
+    n = st.number_input("How many quiz questions?", min_value=1, max_value=20, value=5)
+    topic = st.text_input("Enter a topic (or leave blank if file uploaded):")
+    gen = st.button("Generate Quiz")
 
-if gen:
-    context = file_content if not topic else topic
-    reply = query_gemini(
-        f"Generate {n} multiple-choice quiz questions in JSON. Each with 'q','options','answerIndex'.",
-        context=context,
-        extra_instructions=extra_instructions
-    )
-    qlist = extract_json(reply)
-    if qlist:
-        st.session_state["quiz_local"] = qlist
-        st.session_state["quiz_idx"] = 0
-        st.session_state["quiz_score"] = 0
-    else:
-        st.error("⚠️ Could not parse quiz. Showing raw output.")
-        st.write(reply)
-
-    if st.session_state["quiz_local"]:
-        idx = st.session_state.get("quiz_idx", 0)
-        qlist = st.session_state["quiz_local"]
-
-        if idx >= len(qlist):
-            st.success(f"Quiz finished! Score: {st.session_state['quiz_score']} / {len(qlist)}")
-            if st.button("Restart Quiz"):
-                st.session_state["quiz_idx"] = 0
-                st.session_state["quiz_score"] = 0
+    if gen:
+        context = file_content if not topic else topic
+        extra_instructions = """
+        IMPORTANT: Respond ONLY with valid JSON. 
+        - Do not include explanations, markdown, or extra text.
+        - Each quiz must be a JSON array of objects:
+          {
+            "q": "question text",
+            "options": ["opt1","opt2","opt3","opt4"],
+            "answerIndex": int
+          }
+        - Do not wrap in code blocks.
+        """
+        reply = query_gemini(
+            f"Generate {n} multiple-choice quiz questions in JSON.",
+            context=context,
+            extra_instructions=extra_instructions
+        )
+        qlist = extract_json(reply)
+        if qlist:
+            st.session_state["quiz_local"] = qlist
+            st.session_state["quiz_idx"] = 0
+            st.session_state["quiz_score"] = 0
         else:
-            item = qlist[idx]
-            st.markdown(f"**Q {idx+1}:** {item.get('q')}")
-            options = item.get("options", [])
-            choice = st.radio("Pick an answer:", options, key=f"quiz_choice_{idx}")
-
-            if st.button("Submit Answer", key=f"submit_{idx}"):
-                correct_idx = item.get("answerIndex", None)
-                correct_answer = options[correct_idx] if isinstance(correct_idx, int) else None
-                if choice == correct_answer:
-                    st.success("✅ Correct!")
-                    st.session_state["quiz_score"] += 1
-                else:
-                    st.error(f"❌ Incorrect. Correct answer: {correct_answer}")
-
-            if st.button("Next Question", key=f"next_{idx}"):
-                st.session_state["quiz_idx"] += 1
+            st.error("⚠️ Could not parse quiz. Showing raw output.")
+            st.write(reply)
 
 # -------------------------------
 # SECTION: SRS REVIEW
@@ -250,6 +234,7 @@ if gen:
 elif section == "SRS Review":
     st.header("📚 Spaced Repetition Review")
     st.info("Future enhancement: review flashcards with scheduling.")
+
 
 
 
