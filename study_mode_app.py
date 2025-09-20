@@ -202,11 +202,12 @@ elif section == "Quiz":
         gen = st.form_submit_button("Generate Quiz")
 
    if gen:
-      context = file_content if not topic else topic
-      reply = query_gemini(
+    context = file_content if not topic else topic
+    reply = query_gemini(
         f"Generate {n} multiple-choice quiz questions in JSON. Each with 'q','options','answerIndex'.",
         context=context,
-        extra_instructions=extra_instructions)
+        extra_instructions=extra_instructions
+    )
     qlist = extract_json(reply)
     if qlist:
         st.session_state["quiz_local"] = qlist
@@ -215,7 +216,6 @@ elif section == "Quiz":
     else:
         st.error("⚠️ Could not parse quiz. Showing raw output.")
         st.write(reply)
-
 
     if st.session_state["quiz_local"]:
         idx = st.session_state.get("quiz_idx", 0)
@@ -250,6 +250,7 @@ elif section == "Quiz":
 elif section == "SRS Review":
     st.header("📚 Spaced Repetition Review")
     st.info("Future enhancement: review flashcards with scheduling.")
+
 
 
 
