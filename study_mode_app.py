@@ -153,14 +153,18 @@ elif section == "Flashcards":
         gen = st.form_submit_button("Generate Flashcards")
 
     if gen:
-        context = file_content if not topic else topic
-        reply = query_gemini(f"Generate {num} flashcards as JSON list with 'q' and 'a'.", context=context)
-        try:
-            cards = json.loads(reply)
-            st.session_state["flashcards_local"] = cards
-        except:
-            st.error("⚠️ Could not parse flashcards. Showing raw output.")
-            st.write(reply)
+    context = file_content if not topic else topic
+    reply = query_gemini(
+        f"Generate {num} flashcards as JSON list with 'q' and 'a'.",
+        context=context,
+        extra_instructions=extra_instructions
+    )
+    cards = extract_json(reply)
+    if cards:
+        st.session_state["flashcards_local"] = cards
+    else:
+        st.error("⚠️ Could not parse flashcards. Showing raw output.")
+        st.write(reply)
 
     if st.session_state["flashcards_local"]:
         if "flashcard_idx" not in st.session_state:
@@ -199,16 +203,20 @@ elif section == "Quiz":
         gen = st.form_submit_button("Generate Quiz")
 
     if gen:
-        context = file_content if not topic else topic
-        reply = query_gemini(f"Generate {n} multiple-choice quiz questions in JSON. Each with 'q','options','answerIndex'.", context=context)
-        try:
-            qlist = json.loads(reply)
-            st.session_state["quiz_local"] = qlist
-            st.session_state["quiz_idx"] = 0
-            st.session_state["quiz_score"] = 0
-        except:
-            st.error("⚠️ Could not parse quiz. Showing raw output.")
-            st.write(reply)
+    context = file_content if not topic else topic
+    reply = query_gemini(
+        f"Generate {n} multiple-choice quiz questions in JSON. Each with 'q','options','answerIndex'.",
+        context=context,
+        extra_instructions=extra_instructions
+    )
+    qlist = extract_json(reply)
+    if qlist:
+        st.session_state["quiz_local"] = qlist
+        st.session_state["quiz_idx"] = 0
+        st.session_state["quiz_score"] = 0
+    else:
+        st.error("⚠️ Could not parse quiz. Showing raw output.")
+        st.write(reply)
 
     if st.session_state["quiz_local"]:
         idx = st.session_state.get("quiz_idx", 0)
@@ -243,4 +251,5 @@ elif section == "Quiz":
 elif section == "SRS Review":
     st.header("📚 Spaced Repetition Review")
     st.info("Future enhancement: review flashcards with scheduling.")
+
 
