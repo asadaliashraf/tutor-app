@@ -201,7 +201,7 @@ elif section == "Quiz":
         n = st.slider("Number of questions", 3, 10, 5)
         gen = st.form_submit_button("Generate Quiz")
 
-   if gen:
+if gen:
     context = file_content if not topic else topic
     reply = query_gemini(
         f"Generate {n} multiple-choice quiz questions in JSON. Each with 'q','options','answerIndex'.",
@@ -250,6 +250,7 @@ elif section == "Quiz":
 elif section == "SRS Review":
     st.header("📚 Spaced Repetition Review")
     st.info("Future enhancement: review flashcards with scheduling.")
+
 
 
 
