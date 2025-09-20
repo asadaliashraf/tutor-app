@@ -143,9 +143,11 @@ if section == "Chat":
             st.markdown(f"🤖 **Tutor:** {msg['content']}")
 
     # Input box
-    user_input = st.text_input("Type your message here...")
+    # Chat-style input bar
+    user_input = st.chat_input("✏️ Type your message...")
 
-    if st.button("Send") and user_input.strip():
+    if user_input:
+
 
         # Save user message
         st.session_state.chat_history.append({"role": "user", "content": user_input})
@@ -309,6 +311,7 @@ elif section == "Quiz":
 elif section == "SRS Review":
     st.header("📚 Spaced Repetition Review")
     st.info("Future enhancement: review flashcards with scheduling.")
+
 
 
 
