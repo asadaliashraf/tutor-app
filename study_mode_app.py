@@ -138,19 +138,20 @@ if section == "Chat":
     # Show past chat
     for msg in st.session_state.chat_history:
         if msg["role"] == "user":
-            st.markdown(f"👤 **You:** {msg['content']}")
+            with st.chat_message("user"):
+                st.markdown(msg["content"])
         else:
-            st.markdown(f"🤖 **Tutor:** {msg['content']}")
+            with st.chat_message("assistant"):
+                st.markdown(msg["content"])
 
-    # Input box
-    # Chat-style input bar
-    user_input = st.chat_input("✏️ Type your message...")
+    # Chat input bar (sticky at bottom)
+    user_input = st.chat_input("Type your message here...")
 
     if user_input:
-
-
         # Save user message
         st.session_state.chat_history.append({"role": "user", "content": user_input})
+        with st.chat_message("user"):
+            st.markdown(user_input)
 
         # Build conversation string for context
         conversation = ""
@@ -204,12 +205,9 @@ if section == "Chat":
         # Save assistant reply
         st.session_state.chat_history.append({"role": "assistant", "content": reply})
 
-        # Display latest reply immediately
-        st.markdown(f"🤖 **Tutor:** {reply}")
-
-        # Refresh to update UI
-        st.rerun()
-
+        # Display latest reply
+        with st.chat_message("assistant"):
+            st.markdown(reply)
 # -------------------------------
 # SECTION: FLASHCARDS
 # -------------------------------
@@ -311,6 +309,7 @@ elif section == "Quiz":
 elif section == "SRS Review":
     st.header("📚 Spaced Repetition Review")
     st.info("Future enhancement: review flashcards with scheduling.")
+
 
 
 
