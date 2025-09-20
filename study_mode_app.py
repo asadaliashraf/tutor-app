@@ -74,6 +74,11 @@ Core behavior rules:
 Example:
 User: "Solve 2x + 3 = 11"
 Tutor: "Let's work it out step by step... Step 1: ... (then a check-question)."
+IMPORTANT: Respond ONLY with valid JSON. 
+- Do not include explanations, markdown, or extra text.
+- For flashcards: respond with a JSON array of objects { "q": "...", "a": "..." }.
+- For quizzes: respond with a JSON array of objects { "q": "...", "options": ["..."], "answerIndex": int }.
+- Do not wrap in code blocks.
 """
 # -------------------------------
 # HELPERS
@@ -238,3 +243,4 @@ elif section == "Quiz":
 elif section == "SRS Review":
     st.header("📚 Spaced Repetition Review")
     st.info("Future enhancement: review flashcards with scheduling.")
+
