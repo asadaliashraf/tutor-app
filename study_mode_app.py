@@ -96,14 +96,6 @@ def read_file(uploaded_file):
         return uploaded_file.read().decode("utf-8")
 
 def query_gemini(task_prompt, context="", mode="practice", difficulty="beginner"):
-    extra_instructions = """
-IMPORTANT: Respond ONLY with valid JSON. 
-- Do not include explanations, markdown, or extra text.
-- For flashcards: respond with a JSON array of objects { "q": "...", "a": "..." }.
-- For quizzes: respond with a JSON array of objects { "q": "...", "options": ["..."], "answerIndex": int }.
-- Do not wrap in code blocks.
-"""
-
     headers = {"Content-Type": "application/json"}
     params = {"key": API_KEY}
     full_prompt = f"{SYSTEM_INSTRUCTIONS}\n\nDifficulty: {difficulty}\nMode: {mode}\n\nContext:\n{context}\n\nUser request:\n{task_prompt}"
@@ -121,7 +113,6 @@ IMPORTANT: Respond ONLY with valid JSON.
             return f"⚠️ Unexpected response format: {response.json()}"
     else:
         return f"❌ Error {response.status_code}: {response.text}"
-    
 
 # -------------------------------
 # SIDEBAR CONTROLS
@@ -163,16 +154,13 @@ elif section == "Flashcards":
 
     if gen:
         context = file_content if not topic else topic
-        reply = query_gemini(
-            f"Generate {num} flashcards as JSON list with 'q' and 'a'.",
-            context=context,
-            extra_instructions=extra_instructions)
-    cards = extract_json(reply)
-    if cards:
-        st.session_state["flashcards_local"] = cards
-    else:
-        st.error("⚠️ Could not parse flashcards. Showing raw output.")
-        st.write(reply)
+        reply = query_gemini(f"Generate {num} flashcards as JSON list with 'q' and 'a'.", context=context)
+        try:
+            cards = json.loads(reply)
+            st.session_state["flashcards_local"] = cards
+        except:
+            st.error("⚠️ Could not parse flashcards. Showing raw output.")
+            st.write(reply)
 
     if st.session_state["flashcards_local"]:
         if "flashcard_idx" not in st.session_state:
@@ -203,39 +191,51 @@ elif section == "Flashcards":
 # -------------------------------
 # SECTION: QUIZ
 # -------------------------------
-# Quiz Section
 elif section == "Quiz":
-    st.subheader("📚 Quiz Generator")
-    n = st.number_input("How many quiz questions?", min_value=1, max_value=20, value=5)
-    topic = st.text_input("Enter a topic (or leave blank if file uploaded):")
-    gen = st.button("Generate Quiz")
+    st.header("📝 Quiz Generator")
+    with st.form("quiz_form"):
+        topic = st.text_input("Topic (leave empty to use uploaded file content)")
+        n = st.slider("Number of questions", 3, 10, 5)
+        gen = st.form_submit_button("Generate Quiz")
 
     if gen:
         context = file_content if not topic else topic
-        extra_instructions = """
-        IMPORTANT: Respond ONLY with valid JSON. 
-        - Do not include explanations, markdown, or extra text.
-        - Each quiz must be a JSON array of objects:
-          {
-            "q": "question text",
-            "options": ["opt1","opt2","opt3","opt4"],
-            "answerIndex": int
-          }
-        - Do not wrap in code blocks.
-        """
-        reply = query_gemini(
-            f"Generate {n} multiple-choice quiz questions in JSON.",
-            context=context,
-            extra_instructions=extra_instructions
-        )
-        qlist = extract_json(reply)
-        if qlist:
+        reply = query_gemini(f"Generate {n} multiple-choice quiz questions in JSON. Each with 'q','options','answerIndex'.", context=context)
+        try:
+            qlist = json.loads(reply)
             st.session_state["quiz_local"] = qlist
             st.session_state["quiz_idx"] = 0
             st.session_state["quiz_score"] = 0
-        else:
+        except:
             st.error("⚠️ Could not parse quiz. Showing raw output.")
             st.write(reply)
+
+    if st.session_state["quiz_local"]:
+        idx = st.session_state.get("quiz_idx", 0)
+        qlist = st.session_state["quiz_local"]
+
+        if idx >= len(qlist):
+            st.success(f"Quiz finished! Score: {st.session_state['quiz_score']} / {len(qlist)}")
+            if st.button("Restart Quiz"):
+                st.session_state["quiz_idx"] = 0
+                st.session_state["quiz_score"] = 0
+        else:
+            item = qlist[idx]
+            st.markdown(f"**Q {idx+1}:** {item.get('q')}")
+            options = item.get("options", [])
+            choice = st.radio("Pick an answer:", options, key=f"quiz_choice_{idx}")
+
+            if st.button("Submit Answer", key=f"submit_{idx}"):
+                correct_idx = item.get("answerIndex", None)
+                correct_answer = options[correct_idx] if isinstance(correct_idx, int) else None
+                if choice == correct_answer:
+                    st.success("✅ Correct!")
+                    st.session_state["quiz_score"] += 1
+                else:
+                    st.error(f"❌ Incorrect. Correct answer: {correct_answer}")
+
+            if st.button("Next Question", key=f"next_{idx}"):
+                st.session_state["quiz_idx"] += 1
 
 # -------------------------------
 # SECTION: SRS REVIEW
@@ -243,12 +243,5 @@ elif section == "Quiz":
 elif section == "SRS Review":
     st.header("📚 Spaced Repetition Review")
     st.info("Future enhancement: review flashcards with scheduling.")
-
-
-
-
-
-
-
 
 
