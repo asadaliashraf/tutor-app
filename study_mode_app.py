@@ -96,6 +96,14 @@ def read_file(uploaded_file):
         return uploaded_file.read().decode("utf-8")
 
 def query_gemini(task_prompt, context="", mode="practice", difficulty="beginner"):
+    extra_instructions = """
+IMPORTANT: Respond ONLY with valid JSON. 
+- Do not include explanations, markdown, or extra text.
+- For flashcards: respond with a JSON array of objects { "q": "...", "a": "..." }.
+- For quizzes: respond with a JSON array of objects { "q": "...", "options": ["..."], "answerIndex": int }.
+- Do not wrap in code blocks.
+"""
+
     headers = {"Content-Type": "application/json"}
     params = {"key": API_KEY}
     full_prompt = f"{SYSTEM_INSTRUCTIONS}\n\nDifficulty: {difficulty}\nMode: {mode}\n\nContext:\n{context}\n\nUser request:\n{task_prompt}"
@@ -113,6 +121,7 @@ def query_gemini(task_prompt, context="", mode="practice", difficulty="beginner"
             return f"⚠️ Unexpected response format: {response.json()}"
     else:
         return f"❌ Error {response.status_code}: {response.text}"
+    
 
 # -------------------------------
 # SIDEBAR CONTROLS
@@ -234,6 +243,7 @@ elif section == "Quiz":
 elif section == "SRS Review":
     st.header("📚 Spaced Repetition Review")
     st.info("Future enhancement: review flashcards with scheduling.")
+
 
 
 
