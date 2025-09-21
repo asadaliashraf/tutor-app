@@ -269,7 +269,6 @@ if section == "Flashcards":
 
 # -------------------------------
 # SECTION: QUIZ
-# -------------------------------
 elif section == "Quiz":
     st.header("📝 Quiz Generator")
     
@@ -325,7 +324,6 @@ elif section == "Quiz":
 
             if next_q:
                 st.session_state["quiz_idx"] += 1
-                st.experimental_rerun()
 
 # -------------------------------
 # SECTION: SRS REVIEW
@@ -397,6 +395,7 @@ elif section == "SRS Review":
         if st.button("Clear deck"):
             st.session_state["deck"] = []
             st.experimental_rerun()
+
 
 
 
