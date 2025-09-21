@@ -151,41 +151,48 @@ file_content = read_file(uploaded_file) if uploaded_file else ""
 st.session_state["eli5_mode"] = eli5_mode
 # SECTION: TUTOR CHAT
 # -------------------------------
-if section == "Tutor Chat":
-    # Chat code
-    st.header("💬 Chat Mode")
+# Initialize chat history if not present
+if "chat_history" not in st.session_state:
+    st.session_state["chat_history"] = []
 
-    # Initialize history
-    if "chat_history" not in st.session_state:
-        st.session_state.chat_history = []
+st.sidebar.title("📚 Study Assistant")
+mode = st.sidebar.radio(
+    "Choose a study mode:",
+    ["Chat", "Explain like I'm new", "Flashcards", "Quiz", "Spaced Repetition"]
+)
 
-    # Input box
-    user_input = st.text_input("You:", key="chat_input")
+if mode == "Chat" or mode == "Explain like I'm new":
+    st.header("💬 Chat with Tutor")
 
-    if user_input:
-        # Append user message
-        st.session_state.chat_history.append({"role": "user", "content": user_input})
+    # Input bar for user
+    user_input = st.text_input("Enter your question:", key="chat_input")
 
-        # Build full conversation
-        conversation = "\n".join(
-            [f"{msg['role'].capitalize()}: {msg['content']}" for msg in st.session_state.chat_history]
-        )
+    if st.button("Send"):
+        if user_input:
+            # Save user input in history
+            st.session_state["chat_history"].append({"role": "user", "content": user_input})
 
-        # Add ELI5 instruction if enabled
-        extra_instruction = "Explain the answer in the simplest way possible, as if teaching a complete beginner." \
-            if st.session_state.get("eli5_mode", False) else ""
+            # Convert history to a single conversation string
+            conversation_text = "\n".join(
+                [f"{msg['role'].capitalize()}: {msg['content']}" for msg in st.session_state["chat_history"]]
+            )
 
-        # Query model with history
-        reply = query_gemini(
-            task_prompt=conversation,
-            extra_instructions=extra_instruction
-        )
+            # Add mode-specific instruction
+            extra_instruction = ""
+            if mode == "Explain like I'm new":
+                extra_instruction = "Explain this in the simplest way possible, step by step, as if I'm totally new to the topic."
 
-        # Append model reply
-        st.session_state.chat_history.append({"role": "assistant", "content": reply})
+            # Query Gemini (or your LLM)
+            reply = query_gemini(
+                task_prompt=conversation_text,
+                extra_instructions=extra_instruction
+            )
 
-    # Display full conversation
-    for msg in st.session_state.chat_history:
+            # Save assistant reply in history
+            st.session_state["chat_history"].append({"role": "assistant", "content": reply})
+
+    # Show full conversation
+    for msg in st.session_state["chat_history"]:
         if msg["role"] == "user":
             st.markdown(f"**You:** {msg['content']}")
         else:
@@ -376,6 +383,7 @@ elif section == "SRS Review":
         if st.button("Clear deck"):
             st.session_state["deck"] = []
             st.experimental_rerun()
+
 
 
 
