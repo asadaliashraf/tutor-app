@@ -279,17 +279,22 @@ elif section == "Quiz":
 
     if gen:
         context = file_content if not topic else topic
-        reply = query_gemini(f"Generate {n} multiple-choice quiz questions in JSON. Each with 'q','options','answerIndex'.", context=context)
+        reply = query_gemini(
+            f"Generate {n} multiple-choice quiz questions in JSON. Each with 'q','options','answerIndex'.",
+            context=context
+        )
         try:
-            qlist = json.loads(reply)
+            # Clean the response to avoid parsing issues
+            cleaned_reply = reply.strip()
+            qlist = json.loads(cleaned_reply)
             st.session_state["quiz_local"] = qlist
             st.session_state["quiz_idx"] = 0
             st.session_state["quiz_score"] = 0
-        except:
-            st.error("⚠️ Could not parse quiz. Showing raw output.")
+        except Exception as e:
+            st.error(f"⚠️ Could not parse quiz. Showing raw output.\nError: {e}")
             st.write(reply)
 
-    if st.session_state["quiz_local"]:
+    if st.session_state.get("quiz_local"):
         idx = st.session_state.get("quiz_idx", 0)
         qlist = st.session_state["quiz_local"]
 
@@ -311,11 +316,7 @@ elif section == "Quiz":
                     st.success("✅ Correct!")
                     st.session_state["quiz_score"] += 1
                 else:
-                    st.error(f"❌ Incorrect. Correct answer: {correct_answer}")
-
-            if st.button("Next Question", key=f"next_{idx}"):
-                st.session_state["quiz_idx"] += 1
-
+                    st.error(f"❌ Incorrect. Correct a
 # -------------------------------
 # SECTION: SRS REVIEW
 # -------------------------------
@@ -386,6 +387,7 @@ elif section == "SRS Review":
         if st.button("Clear deck"):
             st.session_state["deck"] = []
             st.experimental_rerun()
+
 
 
 
