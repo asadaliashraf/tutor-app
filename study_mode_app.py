@@ -366,9 +366,10 @@ with tabs[4]:
                         st.warning("No worries! Reset interval to 1 day.")
 # SECTION: SRS REVIEW
 # -------------------------------
-elif section == "SRS Review":
+if section == "SRS Review":
     st.header("📚 Spaced Repetition Review")
     st.info("Future enhancement: review flashcards with scheduling.")
+
 
 
 
