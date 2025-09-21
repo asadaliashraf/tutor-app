@@ -14,8 +14,8 @@ from datetime import date, datetime, timedelta
 API_KEY = os.getenv("GEMINI_API_KEY", "AIzaSyCvBc3KyBMush9se3QDqEdUTMqgkxpRRS0")
 API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent"
 
-st.set_page_config(page_title="📘 Study Mode Tutor", page_icon="📚", layout="wide")
-st.title("📘 Study Mode Tutor")
+st.set_page_config(page_title="📘 Study Tutor", page_icon="📚", layout="wide")
+st.title("📘 Study Tutor")
 st.markdown("Your AI tutor with Study Mode, Flashcards, Quizzes & more 🚀")
 
 # -------------------------------
@@ -362,6 +362,7 @@ elif section == "SRS Review":
         if st.button("Clear deck"):
             st.session_state["deck"] = []
             st.experimental_rerun()
+
 
 
 
