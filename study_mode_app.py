@@ -105,31 +105,36 @@ def query_gemini(task_prompt, context="", mode="practice", difficulty="beginner"
     headers = {"Content-Type": "application/json"}
     params = {"key": API_KEY}
 
-    # Add ELI5 instruction if user enabled it
-    eli5_note = "Please explain in the simplest, beginner-friendly way, like I'm totally new here." if st.session_state.get("eli5_mode", False) else ""
+    # Add ELI5 mode toggle
+    eli5_note = ""
+    if st.session_state.get("eli5_mode"):
+        eli5_note = "\nExplain this as if I'm completely new to the topic, using very simple words and examples."
 
-    full_prompt = f"""{SYSTEM_INSTRUCTIONS}
-    
-Difficulty: {difficulty}
-Mode: {mode}
+    full_prompt = (
+        f"{SYSTEM_INSTRUCTIONS}\n\n"
+        f"Difficulty: {difficulty}\nMode: {mode}{eli5_note}\n\n"
+        f"Context:\n{context}\n\n"
+        f"User request:\n{task_prompt}"
+    )
 
-Context:
-{context}
+    data = {"contents": [{"role": "user", "parts": [{"text": full_prompt}]}]}
 
-User request:
-{task_prompt}
+    try:
+        response = requests.post(API_URL, headers=headers, params=params, json=data)
+        response.raise_for_status()
+        output = response.json()
 
-{eli5_note}
-"""
+        # Safely extract text
+        candidates = output.get("candidates", [])
+        if candidates:
+            parts = candidates[0].get("content", {}).get("parts", [])
+            if parts and "text" in parts[0]:
+                return parts[0]["text"]
 
-    data = {
-        "contents": [
-            {"role": "user", "parts": [{"text": full_prompt}]}
-        ]
-    }
+        return f"⚠️ Unexpected response format: {json.dumps(output, indent=2)}"
 
-    response = requests.post(API_URL, headers=headers, params=params, json=data)
-    ...
+    except Exception as e:
+        return f"❌ Error: {str(e)}"
 # -------------------------------
 # SIDEBAR CONTROLS
 # -------------------------------
@@ -357,5 +362,6 @@ elif section == "SRS Review":
         if st.button("Clear deck"):
             st.session_state["deck"] = []
             st.experimental_rerun()
+
 
 
