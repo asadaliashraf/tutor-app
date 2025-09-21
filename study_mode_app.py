@@ -192,7 +192,7 @@ with tabs[0]:  # Chat tab
 # -------------------------------
 # SECTION: FLASHCARDS
 # -------------------------------
-elif section == "Flashcards":
+if section == "Flashcards":
     st.header("🃏 Flashcards")
     with st.form("flash_form"):
         topic = st.text_input("Topic (leave empty to use uploaded file)")
@@ -375,6 +375,7 @@ elif section == "SRS Review":
         if st.button("Clear deck"):
             st.session_state["deck"] = []
             st.experimental_rerun()
+
 
 
 
