@@ -316,7 +316,7 @@ elif section == "Quiz":
                     st.success("✅ Correct!")
                     st.session_state["quiz_score"] += 1
                 else:
-                    st.error(f"❌ Incorrect. Correct a
+                    st.error(f"❌ Incorrect. Correct answer: {correct_answer}")
 # -------------------------------
 # SECTION: SRS REVIEW
 # -------------------------------
@@ -387,6 +387,7 @@ elif section == "SRS Review":
         if st.button("Clear deck"):
             st.session_state["deck"] = []
             st.experimental_rerun()
+
 
 
 
