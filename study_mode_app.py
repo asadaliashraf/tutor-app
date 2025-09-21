@@ -150,32 +150,44 @@ file_content = read_file(uploaded_file) if uploaded_file else ""
 st.session_state["eli5_mode"] = eli5_mode
 # SECTION: TUTOR CHAT
 # -------------------------------
-if section == "Tutor Chat":
-    st.header("💬 Study Chat")
+with tabs[0]:  # Chat tab
+    st.header("💬 Chat Mode")
 
+    # Initialize history
     if "chat_history" not in st.session_state:
         st.session_state.chat_history = []
 
-    # Show previous messages
-    for msg in st.session_state.chat_history:
-        with st.chat_message(msg["role"]):
-            st.markdown(msg["content"])
-
-    # Input bar
-    user_input = st.chat_input("Type your message here...")
+    # Input box
+    user_input = st.text_input("You:", key="chat_input")
 
     if user_input:
+        # Append user message
         st.session_state.chat_history.append({"role": "user", "content": user_input})
-        with st.chat_message("user"):
-            st.markdown(user_input)
 
-        # Model reply
-        reply = query_gemini(user_input, context=file_content, mode=study_mode, difficulty=difficulty)
+        # Build full conversation
+        conversation = "\n".join(
+            [f"{msg['role'].capitalize()}: {msg['content']}" for msg in st.session_state.chat_history]
+        )
 
+        # Add ELI5 instruction if enabled
+        extra_instruction = "Explain the answer in the simplest way possible, as if teaching a complete beginner." \
+            if st.session_state.get("eli5_mode", False) else ""
+
+        # Query model with history
+        reply = query_gemini(
+            task_prompt=conversation,
+            extra_instructions=extra_instruction
+        )
+
+        # Append model reply
         st.session_state.chat_history.append({"role": "assistant", "content": reply})
-        with st.chat_message("assistant"):
-            st.markdown(reply)
 
+    # Display full conversation
+    for msg in st.session_state.chat_history:
+        if msg["role"] == "user":
+            st.markdown(f"**You:** {msg['content']}")
+        else:
+            st.markdown(f"**Tutor:** {msg['content']}")
 # -------------------------------
 # SECTION: FLASHCARDS
 # -------------------------------
@@ -362,6 +374,7 @@ elif section == "SRS Review":
         if st.button("Clear deck"):
             st.session_state["deck"] = []
             st.experimental_rerun()
+
 
 
 
