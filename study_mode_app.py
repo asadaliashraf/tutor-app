@@ -105,6 +105,23 @@ def query_gemini(task_prompt, context="", mode="practice", difficulty="beginner"
     headers = {"Content-Type": "application/json"}
     params = {"key": API_KEY}
     full_prompt = f"{SYSTEM_INSTRUCTIONS}\n\nDifficulty: {difficulty}\nMode: {mode}\n\nContext:\n{context}\n\nUser request:\n{task_prompt}"
+        if mode == "explain_like_im_new":
+        mode_instruction = "Explain this as if I am completely new to the topic (ELI5). Use super simple words, short sentences, and lots of examples."
+    elif mode == "exam":
+        mode_instruction = "Act like an exam coach. Give concise answers, less hints, focus on final results."
+    else:
+        mode_instruction = f"Mode: {mode}"
+
+    full_prompt = f"""{SYSTEM_INSTRUCTIONS}
+
+Difficulty: {difficulty}
+{mode_instruction}
+
+Context:
+{context}
+
+User request:
+{task_prompt}"""
     data = {
         "contents": [
             {"role": "user", "parts": [{"text": full_prompt}]}
@@ -125,7 +142,7 @@ def query_gemini(task_prompt, context="", mode="practice", difficulty="beginner"
 # -------------------------------
 st.sidebar.header("⚙️ Settings")
 section = st.sidebar.radio("Choose Section", ["Tutor Chat", "Flashcards", "Quiz", "SRS Review"])
-study_mode = st.sidebar.selectbox("Study Mode", ["practice", "exam"])
+study_mode = st.sidebar.selectbox("Study Mode", ["practice", "exam", "explain_like_im_new"])
 difficulty = st.sidebar.selectbox("Difficulty", ["beginner", "intermediate", "advanced"])
 uploaded_file = st.sidebar.file_uploader("📎 Upload a study file", type=["pdf", "docx", "txt"])
 file_content = read_file(uploaded_file) if uploaded_file else ""
@@ -307,3 +324,4 @@ elif section == "Quiz":
 elif section == "SRS Review":
     st.header("📚 Spaced Repetition Review")
     st.info("Future enhancement: review flashcards with scheduling.")
+
