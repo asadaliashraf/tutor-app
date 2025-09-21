@@ -234,7 +234,15 @@ elif section == "Flashcards":
         else:
             st.error("⚠️ Could not parse flashcards. Showing raw output.")
             st.write(reply)
-
+    if st.button("💾 Save to Deck"):
+    for f in flashcards:
+        st.session_state.deck.append({
+            "q": f["q"],
+            "a": f["a"],
+            "interval": 1,
+            "next_review": datetime.date.today()
+        })
+    st.success("Flashcards saved to your spaced repetition deck!")
     if st.session_state["flashcards_local"]:
         if "flashcard_idx" not in st.session_state:
             st.session_state["flashcard_idx"] = 0
@@ -319,11 +327,48 @@ elif section == "Quiz":
                 st.session_state["quiz_idx"] += 1
 
 # -------------------------------
+import datetime
+
+# Initialize deck if not exists
+if "deck" not in st.session_state:
+    st.session_state.deck = []
+
+# ---- Spaced Repetition Tab ----
+with tabs[4]:
+    st.header("🕒 Spaced Repetition Review")
+
+    if not st.session_state.deck:
+        st.info("No saved flashcards yet. Go to Flashcards tab and add some.")
+    else:
+        today = datetime.date.today()
+        due_cards = [c for c in st.session_state.deck if c["next_review"] <= today]
+
+        if not due_cards:
+            st.success("🎉 No cards due for review today. Come back tomorrow!")
+        else:
+            card = due_cards[0]  # Show first due card
+            st.write(f"**Q:** {card['q']}")
+
+            if st.button("Show Answer"):
+                st.write(f"**A:** {card['a']}")
+
+                col1, col2 = st.columns(2)
+                with col1:
+                    if st.button("✅ I got it"):
+                        card["interval"] *= 2
+                        card["next_review"] = today + datetime.timedelta(days=card["interval"])
+                        st.success("Nice! Interval doubled.")
+                with col2:
+                    if st.button("❌ I forgot"):
+                        card["interval"] = 1
+                        card["next_review"] = today + datetime.timedelta(days=1)
+                        st.warning("No worries! Reset interval to 1 day.")
 # SECTION: SRS REVIEW
 # -------------------------------
 elif section == "SRS Review":
     st.header("📚 Spaced Repetition Review")
     st.info("Future enhancement: review flashcards with scheduling.")
+
 
 
 
