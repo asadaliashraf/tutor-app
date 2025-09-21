@@ -150,47 +150,42 @@ file_content = read_file(uploaded_file) if uploaded_file else ""
 # -------------------------------
 st.session_state["eli5_mode"] = eli5_mode
 # SECTION: TUTOR CHAT
+    # -------------------------------
+# SECTION: TUTOR CHAT
 # -------------------------------
-# Initialize chat history if not present
-    # ---------------- Sidebar Chat ---------------- #
-import streamlit as st
+if section == "Tutor Chat":
+    st.header("💬 Study Chat")
 
-st.sidebar.title("Study Assistant")
+    # Initialize chat history
+    if "chat_history" not in st.session_state:
+        st.session_state["chat_history"] = []
 
-# Conversation history
-if "chat_history" not in st.session_state:
-    st.session_state.chat_history = []
+    # Display previous messages
+    for msg in st.session_state.chat_history:
+        with st.chat_message(msg["role"]):
+            st.markdown(msg["content"])
 
-# Chat input
-user_input = st.sidebar.text_input("Ask me anything:")
+    # Input bar
+    user_input = st.chat_input("Type your message here...")
 
-if user_input:
-    # Add user message to history
-    st.session_state.chat_history.append({"role": "user", "content": user_input})
+    if user_input:
+        # Save and show user message
+        st.session_state.chat_history.append({"role": "user", "content": user_input})
+        with st.chat_message("user"):
+            st.markdown(user_input)
 
-    # Combine messages into a single conversation text
-    conversation_text = "\n".join(
-        [f"{msg['role'].capitalize()}: {msg['content']}" for msg in st.session_state.chat_history]
-    )
+        # Call Gemini (or your model)
+        reply = query_gemini(
+            task_prompt=user_input,
+            context=file_content,
+            mode=study_mode,
+            difficulty=difficulty
+        )
 
-    # Add study mode / ELI5 if enabled
-    extra_instruction = ""
-    if st.session_state.get("eli5_mode", False):
-        extra_instruction = "Explain this in the simplest way possible, as if teaching a complete beginner."
-
-    # Call model (FIXED: positional args instead of named args)
-    reply = query_gemini(conversation_text, extra_instruction)
-
-    # Add assistant reply to history
-    st.session_state.chat_history.append({"role": "assistant", "content": reply})
-
-# Display conversation
-for msg in st.session_state.chat_history:
-    if msg["role"] == "user":
-        st.sidebar.markdown(f"**You:** {msg['content']}")
-    else:
-        st.sidebar.markdown(f"**Assistant:** {msg['content']}")
-
+        # Save and show assistant message
+        st.session_state.chat_history.append({"role": "assistant", "content": reply})
+        with st.chat_message("assistant"):
+            st.markdown(reply)
 
 # -------------------------------
 # SECTION: FLASHCARDS
@@ -378,6 +373,7 @@ elif section == "SRS Review":
         if st.button("Clear deck"):
             st.session_state["deck"] = []
             st.experimental_rerun()
+
 
 
 
