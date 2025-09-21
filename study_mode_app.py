@@ -234,14 +234,15 @@ elif section == "Flashcards":
         else:
             st.error("⚠️ Could not parse flashcards. Showing raw output.")
             st.write(reply)
-    if st.button("💾 Save to Deck"):
-    for f in flashcards:
-        st.session_state.deck.append({
-            "q": f["q"],
-            "a": f["a"],
-            "interval": 1,
-            "next_review": datetime.date.today()
-        })
+            if st.button("💾 Save to Deck"):
+                for f in flashcards:
+                    st.session_state.deck.append({
+                        "q": f["q"],
+                        "a": f["a"],
+                        "interval": 1,
+                        "next_review": datetime.date.today()})
+                st.success("Flashcards saved to your spaced repetition deck!")
+    
     st.success("Flashcards saved to your spaced repetition deck!")
     if st.session_state["flashcards_local"]:
         if "flashcard_idx" not in st.session_state:
@@ -368,6 +369,7 @@ with tabs[4]:
 elif section == "SRS Review":
     st.header("📚 Spaced Repetition Review")
     st.info("Future enhancement: review flashcards with scheduling.")
+
 
 
 
