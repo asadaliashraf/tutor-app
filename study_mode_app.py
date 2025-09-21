@@ -152,15 +152,17 @@ st.session_state["eli5_mode"] = eli5_mode
 # SECTION: TUTOR CHAT
     # -------------------------------
 # SECTION: TUTOR CHAT
+    # -------------------------------
+# SECTION: TUTOR CHAT
 # -------------------------------
 if section == "Tutor Chat":
     st.header("💬 Study Chat")
 
     # Initialize chat history
     if "chat_history" not in st.session_state:
-        st.session_state["chat_history"] = []
+        st.session_state.chat_history = []
 
-    # Display previous messages
+    # Show previous messages
     for msg in st.session_state.chat_history:
         with st.chat_message(msg["role"]):
             st.markdown(msg["content"])
@@ -169,20 +171,31 @@ if section == "Tutor Chat":
     user_input = st.chat_input("Type your message here...")
 
     if user_input:
-        # Save and show user message
+        # Save user message
         st.session_state.chat_history.append({"role": "user", "content": user_input})
         with st.chat_message("user"):
             st.markdown(user_input)
 
-        # Call Gemini (or your model)
+        # Build full conversation for model context
+        conversation_text = ""
+        for msg in st.session_state.chat_history:
+            role_label = "User" if msg["role"] == "user" else "Assistant"
+            conversation_text += f"{role_label}: {msg['content']}\n"
+
+        # Add ELI5 note if enabled
+        extra_instruction = ""
+        if st.session_state.get("eli5_mode"):
+            extra_instruction = "\nExplain this as if I'm completely new to the topic, using very simple words and examples."
+
+        # Query Gemini
         reply = query_gemini(
-            task_prompt=user_input,
+            task_prompt=conversation_text,
             context=file_content,
             mode=study_mode,
             difficulty=difficulty
         )
 
-        # Save and show assistant message
+        # Save and display assistant message
         st.session_state.chat_history.append({"role": "assistant", "content": reply})
         with st.chat_message("assistant"):
             st.markdown(reply)
@@ -373,6 +386,7 @@ elif section == "SRS Review":
         if st.button("Clear deck"):
             st.session_state["deck"] = []
             st.experimental_rerun()
+
 
 
 
