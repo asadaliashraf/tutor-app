@@ -6,6 +6,7 @@ import random
 import sqlite3
 import PyPDF2
 import docx
+from datetime import date, datetime, timedelta
 
 # -------------------------------
 # CONFIG
@@ -18,7 +19,7 @@ st.title("📘 Study Mode Tutor")
 st.markdown("Your AI tutor with Study Mode, Flashcards, Quizzes & more 🚀")
 
 # -------------------------------
-# SESSION STATE (ensure chat_history exists)
+# SESSION STATE
 # -------------------------------
 if "messages" not in st.session_state:
     st.session_state["messages"] = []
@@ -29,9 +30,9 @@ if "flashcards_local" not in st.session_state:
 if "quiz_local" not in st.session_state:
     st.session_state["quiz_local"] = []
 
-# Ensure chat_history is present (this is what the Chat section uses)
-if "chat_history" not in st.session_state:
-    st.session_state["chat_history"] = []
+# Spaced repetition deck
+if "deck" not in st.session_state:
+    st.session_state["deck"] = []  # {"q","a","interval","repetitions","next_review"}
 
 # -------------------------------
 # SYSTEM INSTRUCTIONS
@@ -47,43 +48,11 @@ Personality & Tone:
 - Adapt to the learner's level. If unclear, briefly ask: "Which level should I use — beginner, intermediate, or advanced?"
 
 Core behavior rules:
-1. Intent detection (infer from natural language):
-   - If the learner asks for a hint → act as `give-hint`.
-   - If they ask for step-by-step help → act as `explain-step`.
-   - If they ask for the complete answer → act as `full-solution`.
-   - If they ask for practice problems → act as `generate-practice`.
-   - If they just say "give me the answer," comply, but gently encourage them to try at least one step.
-2. Response structure:
-   - Restate the problem in one friendly sentence.
-   - Give a short plan (what we’ll do).
-   - Provide one small, numbered step in explain-step mode, then stop with a check-question.
-   - For hints, offer them progressively: Hint 1 (subtle), Hint 2 (clearer), Final Hint (nearly full).
-   - For full solutions, show all steps clearly, then the final answer.
-3. After completing any full solution:
-   - Celebrate success (e.g., "Well done, you solved it! 🎉").
-   - Always ask: "Would you like to try a similar practice problem to strengthen this skill?"
-   - If the learner agrees, generate 1–2 practice problems of the same type and wait for them to attempt before giving answers.
-4. Reinforcement & encouragement:
-   - Praise correct steps: "Nice! Subtracting 3 is exactly right."
-   - If the learner is incorrect, gently correct and explain why in simple terms.
-   - Always invite the learner to try the next step: "What do you think comes next?"
-5. Clarifications & flexibility:
-   - If the learner requests a different style (simpler/advanced/ELI5/formal), adapt immediately.
-6. Factual grounding:
-   - If retrieval/context is provided, cite or mention source IDs when making factual claims.
-7. Safety & refusal:
-   - Do not provide help with harmful or disallowed content. Refuse politely.
-8. Formatting:
-   - Use numbered steps, short sentences, and inline math (e.g., `2x + 3 = 11`).
-Example:
-User: "Solve 2x + 3 = 11"
-Tutor: "Let's work it out step by step... Step 1: ... (then a check-question)."
-IMPORTANT: Respond ONLY with valid JSON for Flashcards and Quizzes not for Chat. 
-- Do not include explanations, markdown, or extra text.
-- For flashcards: respond with a JSON array of objects { "q": "...", "a": "..." }.
-- For quizzes: respond with a JSON array of objects { "q": "...", "options": ["..."], "answerIndex": int }.
-- Do not wrap in code blocks.
-- For Chat do not use JSON 
+1. Intent detection (infer from natural language).
+2. Step-by-step explanations, hints, practice problems.
+3. Encourage after solutions, offer practice.
+4. ELI5 mode if asked ("explain like I'm new here").
+5. Flashcards + Quiz outputs MUST be valid JSON arrays only.
 """
 
 # -------------------------------
@@ -105,23 +74,6 @@ def query_gemini(task_prompt, context="", mode="practice", difficulty="beginner"
     headers = {"Content-Type": "application/json"}
     params = {"key": API_KEY}
     full_prompt = f"{SYSTEM_INSTRUCTIONS}\n\nDifficulty: {difficulty}\nMode: {mode}\n\nContext:\n{context}\n\nUser request:\n{task_prompt}"
-    if mode == "explain_like_im_new":
-        mode_instruction = "Explain this as if I am completely new to the topic (ELI5). Use super simple words, short sentences, and lots of examples."
-    elif mode == "exam":
-        mode_instruction = "Act like an exam coach. Give concise answers, less hints, focus on final results."
-    else:
-        mode_instruction = f"Mode: {mode}"
-
-    full_prompt = f"""{SYSTEM_INSTRUCTIONS}
-
-Difficulty: {difficulty}
-{mode_instruction}
-
-Context:
-{context}
-
-User request:
-{task_prompt}"""
     data = {
         "contents": [
             {"role": "user", "parts": [{"text": full_prompt}]}
@@ -142,7 +94,7 @@ User request:
 # -------------------------------
 st.sidebar.header("⚙️ Settings")
 section = st.sidebar.radio("Choose Section", ["Tutor Chat", "Flashcards", "Quiz", "SRS Review"])
-study_mode = st.sidebar.selectbox("Study Mode", ["Practice", "Exam", "Explain like im new"])
+study_mode = st.sidebar.selectbox("Study Mode", ["practice", "exam"])
 difficulty = st.sidebar.selectbox("Difficulty", ["beginner", "intermediate", "advanced"])
 uploaded_file = st.sidebar.file_uploader("📎 Upload a study file", type=["pdf", "docx", "txt"])
 file_content = read_file(uploaded_file) if uploaded_file else ""
@@ -150,53 +102,29 @@ file_content = read_file(uploaded_file) if uploaded_file else ""
 # -------------------------------
 # SECTION: TUTOR CHAT
 # -------------------------------
-# NOTE: matching the sidebar label "Tutor Chat" exactly
 if section == "Tutor Chat":
     st.header("💬 Study Chat")
 
-    # Keep chat history (already initialized at top)
-    # Display existing messages (user/assistant)
-    for msg in st.session_state["chat_history"]:
-        # st.chat_message expects role "user" or "assistant"
+    if "chat_history" not in st.session_state:
+        st.session_state.chat_history = []
+
+    # Show previous messages
+    for msg in st.session_state.chat_history:
         with st.chat_message(msg["role"]):
             st.markdown(msg["content"])
 
-    # Chat input bar (sticky at bottom)
+    # Input bar
     user_input = st.chat_input("Type your message here...")
 
     if user_input:
-        # append user message to history and display it
-        st.session_state["chat_history"].append({"role": "user", "content": user_input})
+        st.session_state.chat_history.append({"role": "user", "content": user_input})
         with st.chat_message("user"):
             st.markdown(user_input)
 
-        # build conversation to send to model (full history)
-        conversation = ""
-        for msg in st.session_state["chat_history"]:
-            role = "You" if msg["role"] == "user" else "Tutor"
-            conversation += f"{role}: {msg['content']}\n"
+        # Model reply
+        reply = query_gemini(user_input, context=file_content, mode=study_mode, difficulty=difficulty)
 
-        # Build extra instructions honoring study_mode and difficulty
-        if study_mode == "practice":
-            mode_instructions = "Use step-by-step reasoning, hints, and check-questions. Encourage the learner."
-        else:
-            mode_instructions = "Be concise and direct; minimal hints (exam style)."
-
-        if difficulty == "beginner":
-            diff_instructions = "Explain simply and use analogies (ELI5)."
-        elif difficulty == "intermediate":
-            diff_instructions = "Use moderate detail and examples."
-        else:
-            diff_instructions = "Use technical terms and deeper explanations."
-
-        extra_instructions = f"Study Mode: {study_mode}. Difficulty: {difficulty}. {mode_instructions} {diff_instructions}"
-
-        # Call the model (you can route to real query)
-        with st.spinner("Thinking..."):
-            reply = query_gemini(conversation, context=file_content, mode=study_mode, difficulty=difficulty)
-
-        # append assistant reply and display
-        st.session_state["chat_history"].append({"role": "assistant", "content": reply})
+        st.session_state.chat_history.append({"role": "assistant", "content": reply})
         with st.chat_message("assistant"):
             st.markdown(reply)
 
@@ -212,38 +140,14 @@ elif section == "Flashcards":
 
     if gen:
         context = file_content if not topic else topic
-        # instruct model to output JSON array for flashcards (best-effort)
-        extra_instructions = (
-            "IMPORTANT: Respond ONLY with valid JSON array of objects "
-            'like [{"q":"question","a":"answer"}, ...]. No extra text.'
-        )
-        reply = query_gemini(f"Generate {num} flashcards as JSON list with 'q' and 'a'.", context=context, mode=study_mode, difficulty=difficulty)
-        # try to extract JSON block
-        import re
-        def extract_json_block(text):
-            m = re.search(r"(\[.*\])", text, re.DOTALL)
-            if not m:
-                return None
-            try:
-                return json.loads(m.group(1))
-            except:
-                return None
-        cards = extract_json_block(reply)
-        if cards:
+        reply = query_gemini(f"Generate {num} flashcards as JSON list with 'q' and 'a'.", context=context)
+        try:
+            cards = json.loads(reply)
             st.session_state["flashcards_local"] = cards
-        else:
+        except:
             st.error("⚠️ Could not parse flashcards. Showing raw output.")
             st.write(reply)
-            if st.button("💾 Save to Deck"):
-                for f in flashcards:
-                    st.session_state.deck.append({
-                        "q": f["q"],
-                        "a": f["a"],
-                        "interval": 1,
-                        "next_review": datetime.date.today()})
-                st.success("Flashcards saved to your spaced repetition deck!")
-    
-    st.success("Flashcards saved to your spaced repetition deck!")
+
     if st.session_state["flashcards_local"]:
         if "flashcard_idx" not in st.session_state:
             st.session_state["flashcard_idx"] = 0
@@ -253,12 +157,13 @@ elif section == "Flashcards":
         idx = st.session_state["flashcard_idx"]
         card = cards[idx]
 
-        st.markdown(f"**Q:** {card.get('q')}")
+        st.markdown(f"**Q:** {card['q']}")
+
         if not st.session_state["show_answer"]:
             if st.button("Show Answer"):
                 st.session_state["show_answer"] = True
         else:
-            st.info(card.get("a"))
+            st.info(card["a"])
             col1, col2 = st.columns(2)
             with col1:
                 if st.button("✅ I got it"):
@@ -268,6 +173,27 @@ elif section == "Flashcards":
                 if st.button("❌ I need practice"):
                     st.session_state["flashcard_idx"] = (idx + 1) % len(cards)
                     st.session_state["show_answer"] = False
+
+        # Save to SRS deck
+        if st.button("💾 Save generated flashcards to SRS deck"):
+            added = 0
+            existing_qs = {c.get("q") for c in st.session_state["deck"]}
+            for fc in st.session_state["flashcards_local"]:
+                q_text = fc.get("q") or ""
+                a_text = fc.get("a") or ""
+                if not q_text or q_text in existing_qs:
+                    continue
+                card_obj = {
+                    "q": q_text,
+                    "a": a_text,
+                    "interval": 1,
+                    "repetitions": 0,
+                    "next_review": date.today().isoformat()
+                }
+                st.session_state["deck"].append(card_obj)
+                existing_qs.add(q_text)
+                added += 1
+            st.success(f"Saved {added} card(s) to SRS deck.")
 
 # -------------------------------
 # SECTION: QUIZ
@@ -281,26 +207,17 @@ elif section == "Quiz":
 
     if gen:
         context = file_content if not topic else topic
-        reply = query_gemini(f"Generate {n} multiple-choice quiz questions in JSON. Each with 'q','options','answerIndex'.", context=context, mode=study_mode, difficulty=difficulty)
-        import re
-        def extract_json_block(text):
-            m = re.search(r"(\[.*\])", text, re.DOTALL)
-            if not m:
-                return None
-            try:
-                return json.loads(m.group(1))
-            except:
-                return None
-        qlist = extract_json_block(reply)
-        if qlist:
+        reply = query_gemini(f"Generate {n} multiple-choice quiz questions in JSON. Each with 'q','options','answerIndex'.", context=context)
+        try:
+            qlist = json.loads(reply)
             st.session_state["quiz_local"] = qlist
             st.session_state["quiz_idx"] = 0
             st.session_state["quiz_score"] = 0
-        else:
+        except:
             st.error("⚠️ Could not parse quiz. Showing raw output.")
             st.write(reply)
 
-    if st.session_state.get("quiz_local"):
+    if st.session_state["quiz_local"]:
         idx = st.session_state.get("quiz_idx", 0)
         qlist = st.session_state["quiz_local"]
 
@@ -328,50 +245,72 @@ elif section == "Quiz":
                 st.session_state["quiz_idx"] += 1
 
 # -------------------------------
-import datetime
-
-# Initialize deck if not exists
-if "deck" not in st.session_state:
-    st.session_state.deck = []
-
-# ---- Spaced Repetition Tab ----
-with tabs[4]:
-    st.header("🕒 Spaced Repetition Review")
-
-    if not st.session_state.deck:
-        st.info("No saved flashcards yet. Go to Flashcards tab and add some.")
-    else:
-        today = datetime.date.today()
-        due_cards = [c for c in st.session_state.deck if c["next_review"] <= today]
-
-        if not due_cards:
-            st.success("🎉 No cards due for review today. Come back tomorrow!")
-        else:
-            card = due_cards[0]  # Show first due card
-            st.write(f"**Q:** {card['q']}")
-
-            if st.button("Show Answer"):
-                st.write(f"**A:** {card['a']}")
-
-                col1, col2 = st.columns(2)
-                with col1:
-                    if st.button("✅ I got it"):
-                        card["interval"] *= 2
-                        card["next_review"] = today + datetime.timedelta(days=card["interval"])
-                        st.success("Nice! Interval doubled.")
-                with col2:
-                    if st.button("❌ I forgot"):
-                        card["interval"] = 1
-                        card["next_review"] = today + datetime.timedelta(days=1)
-                        st.warning("No worries! Reset interval to 1 day.")
 # SECTION: SRS REVIEW
 # -------------------------------
-if section == "SRS Review":
-    st.header("📚 Spaced Repetition Review")
-    st.info("Future enhancement: review flashcards with scheduling.")
+elif section == "SRS Review":
+    st.header("🔁 Spaced Repetition — Review Deck")
 
+    if not st.session_state.get("deck"):
+        st.info("Your SRS deck is empty. Generate flashcards and click 'Save generated flashcards to SRS deck' in the Flashcards section.")
+    else:
+        total = len(st.session_state["deck"])
+        today = date.today()
+        due_list = []
+        for idx, c in enumerate(st.session_state["deck"]):
+            try:
+                nr_date = date.fromisoformat(c.get("next_review"))
+            except Exception:
+                nr_date = today
+            if nr_date <= today:
+                due_list.append((idx, c))
 
+        st.subheader(f"Deck: {total} cards — {len(due_list)} due today")
 
+        if not due_list:
+            st.success("No cards due for review right now. 🎉")
+        else:
+            idx, card = due_list[0]
+            st.markdown(f"**Q:** {card.get('q')}")
+            if st.button("Show Answer", key=f"show_{idx}"):
+                st.info(f"A: {card.get('a')}")
 
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                if st.button("✅ Good", key=f"good_{idx}"):
+                    reps = card.get("repetitions", 0) + 1
+                    card["repetitions"] = reps
+                    prev_interval = card.get("interval", 1)
+                    if reps == 1:
+                        new_interval = 1
+                    elif reps == 2:
+                        new_interval = 6
+                    else:
+                        new_interval = int(round(max(1, prev_interval * 2.5)))
+                    card["interval"] = new_interval
+                    card["next_review"] = (today + timedelta(days=new_interval)).isoformat()
+                    st.session_state["deck"][idx] = card
+                    st.experimental_rerun()
+            with col2:
+                if st.button("➕ Partial", key=f"partial_{idx}"):
+                    reps = card.get("repetitions", 0) + 1
+                    card["repetitions"] = reps
+                    prev_interval = card.get("interval", 1)
+                    new_interval = int(round(max(1, prev_interval * 1.5)))
+                    card["interval"] = new_interval
+                    card["next_review"] = (today + timedelta(days=new_interval)).isoformat()
+                    st.session_state["deck"][idx] = card
+                    st.experimental_rerun()
+            with col3:
+                if st.button("❌ Forgot", key=f"fail_{idx}"):
+                    card["repetitions"] = 0
+                    card["interval"] = 1
+                    card["next_review"] = (today + timedelta(days=1)).isoformat()
+                    st.session_state["deck"][idx] = card
+                    st.experimental_rerun()
 
-
+        st.markdown("---")
+        if st.button("Export deck"):
+            st.download_button("Download JSON", data=json.dumps(st.session_state["deck"], indent=2), file_name="srs_deck.json")
+        if st.button("Clear deck"):
+            st.session_state["deck"] = []
+            st.experimental_rerun()
