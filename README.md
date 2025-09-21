@@ -1,126 +1,106 @@
-📘 Study Mode App
+📘 Study Mode Tutor
 
-An interactive AI-powered study companion that helps you learn smarter using flashcards, quizzes, spaced repetition, and multiple study modes.
+Your AI-powered study companion with tutoring, flashcards, quizzes, spaced repetition, and ELI5 explanations. Built with Streamlit and powered by Gemini API.
 
 🚀 Features
 
-✅ Explain Like I’m New (ELI5) – Simplifies explanations into beginner-friendly language with analogies.
-✅ Flashcards Generator – Auto-creates Q/A flashcards for review.
-✅ Quiz Generator – Multiple-choice quizzes with hints + correct answers.
-✅ Spaced-Repetition Review – Reinforces concepts at intervals for long-term memory.
-✅ Configurable Study Modes
+Tutor Chat:
 
-Beginner: Simple explanations, small quizzes.
+Friendly, Socratic teaching style.
 
-Practice: Mixed difficulty, more details.
+Supports step-by-step guidance, hints, and full solutions.
 
-Exam: Hardest mode, minimal hints, strict quizzes.
-✅ File Upload Support – Upload .pdf, .docx, .txt to extract study material.
-✅ Chat Memory – Keeps conversations flowing naturally.
+New: Explain Like I’m New (ELI5) mode for ultra-simplified answers.
+
+Flashcards Generator:
+
+Upload a file (PDF, DOCX, or TXT) or enter a topic.
+
+Automatically generate flashcards in Q/A format.
+
+Practice with self-marking (✅ Got it / ❌ Need practice).
+
+Quiz Generator:
+
+Generate multiple-choice quizzes with hints.
+
+Interactive answering and scoring.
+
+Spaced Repetition Review (SRS):
+
+Save flashcards into a review pool.
+
+Revisit them later using a Leitner-style learning system.
+
+Configurable Modes:
+
+Difficulty: Beginner / Intermediate / Advanced.
+
+Study Modes: Practice / Exam.
+
+ELI5 toggle: explain everything in simple terms.
 
 ⚙️ Setup
-1. Clone the repo
-git clone https://github.com/your-username/study-mode-app.git
-cd study-mode-app
 
-2. Install dependencies
+Clone the repo
+
+git clone https://github.com/asadaliashraf/tutor-app.git
+cd study-mode-tutor
+
+
+Create virtual environment & install dependencies
+
+python -m venv venv
+source venv/bin/activate   # macOS/Linux
+venv\Scripts\activate      # Windows
+
 pip install -r requirements.txt
 
-3. Environment variables
 
-Create a .env file in the root folder:
+Set your Gemini API Key
 
-GEMINI_API_KEY=your_gemini_api_key_here
+export GEMINI_API_KEY="your_api_key_here"   # macOS/Linux
+setx GEMINI_API_KEY "your_api_key_here"     # Windows
 
-4. Run the app
+
+Run the app
+
+streamlit run study_mode_app.py
+
+📝 Usage
+
+Select your Study Mode and Difficulty from the sidebar.
+
+Upload study material (PDF/DOCX/TXT) or type a topic.
+
+Choose a section:
+
+Tutor Chat → Ask questions, get guided answers.
+
+Flashcards → Generate and practice cards.
+
+Quiz → Test yourself with multiple-choice questions.
+
+SRS Review → Strengthen long-term memory.
+
+🎬 Demo Script / Walkthrough
+
+Launch app with:
+
 streamlit run study_mode_app.py
 
 
-App will be available at: http://localhost:8501/
+In sidebar, upload a sample PDF (e.g., biology notes).
 
-🖥️ Usage
-Main Sections
+Generate flashcards → Try practicing with them.
 
-Chat – Ask questions, get continuous explanations.
+Switch to Quiz → Answer 5 auto-generated questions.
 
-Explain Like I’m New (ELI5) – Beginner-level breakdowns.
-
-Flashcards – Generate study flashcards from text or file.
-
-Quiz Mode – Take AI-generated quizzes.
-
-Spaced Repetition Review – Review old flashcards at scheduled intervals.
-
-🎬 Demo Walkthrough
-
-Here’s a sample run of the app 👇
-
-1. Upload a file
-
-Upload a biology.pdf.
-
-2. Choose a Study Mode
-
-Select Beginner → Practice → Exam depending on difficulty.
-
-3. Try ELI5 Mode
-
-Input:
+Try Tutor Chat with:
 
 Explain photosynthesis like I’m new here.
 
 
-Output:
+You’ll see the ELI5 mode in action.
 
-Photosynthesis is like plants cooking food. They use sunlight like an oven, water like ingredients, and carbon dioxide like seasoning to make sugar, which is their food.
-
-4. Generate Flashcards
-
-Click Flashcards → Generate.
-
-Output Example:
-
-Q: What is the basic unit of life?  
-A: Cell  
-
-Q: What gas do humans exhale?  
-A: Carbon Dioxide  
-
-5. Take a Quiz
-
-Click Quiz → Generate.
-
-Output Example:
-
-Q: What is the process plants use to make food?  
-Options: [Respiration, Photosynthesis, Transpiration, Germination]  
-Answer: Photosynthesis  
-Hint: It uses sunlight.
-
-6. Spaced Repetition Review
-
-Review flashcards saved from earlier sessions.
-
-Oldest flashcards reappear first.
-
-Helps strengthen memory over time.
-
-📜 Tech Stack
-
-Python 3.9+
-
-Streamlit for UI
-
-Gemini API for AI reasoning
-
-PyPDF2, python-docx for file parsing
-
-✅ Deliverables
-
-Core flows: ELI5, flashcards, quiz, spaced repetition
-
-Configurable study modes: Beginner, Practice, Exam
-
-Full README + demo walkthrough
-
-File upload support
+Add cards to SRS Review → Revisit them later for spaced repetition practice.
