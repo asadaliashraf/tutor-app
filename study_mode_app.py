@@ -272,11 +272,14 @@ if section == "Flashcards":
 # -------------------------------
 elif section == "Quiz":
     st.header("📝 Quiz Generator")
+    
+    # Quiz generation form
     with st.form("quiz_form"):
         topic = st.text_input("Topic (leave empty to use uploaded file content)")
         n = st.slider("Number of questions", 3, 10, 5)
         gen = st.form_submit_button("Generate Quiz")
 
+    # Generate quiz using API
     if gen:
         context = file_content if not topic else topic
         reply = query_gemini(
@@ -284,16 +287,15 @@ elif section == "Quiz":
             context=context
         )
         try:
-            # Clean the response to avoid parsing issues
-            cleaned_reply = reply.strip()
-            qlist = json.loads(cleaned_reply)
+            qlist = json.loads(reply)
             st.session_state["quiz_local"] = qlist
             st.session_state["quiz_idx"] = 0
             st.session_state["quiz_score"] = 0
-        except Exception as e:
-            st.error(f"⚠️ Could not parse quiz. Showing raw output.\nError: {e}")
+        except:
+            st.error("⚠️ Could not parse quiz. Showing raw output.")
             st.write(reply)
 
+    # Show quiz questions
     if st.session_state.get("quiz_local"):
         idx = st.session_state.get("quiz_idx", 0)
         qlist = st.session_state["quiz_local"]
@@ -309,7 +311,10 @@ elif section == "Quiz":
             options = item.get("options", [])
             choice = st.radio("Pick an answer:", options, key=f"quiz_choice_{idx}")
 
-            if st.button("Submit Answer", key=f"submit_{idx}"):
+            submitted = st.button("Submit Answer", key=f"submit_{idx}")
+            next_q = st.button("Next Question", key=f"next_{idx}")
+
+            if submitted:
                 correct_idx = item.get("answerIndex", None)
                 correct_answer = options[correct_idx] if isinstance(correct_idx, int) else None
                 if choice == correct_answer:
@@ -317,6 +322,11 @@ elif section == "Quiz":
                     st.session_state["quiz_score"] += 1
                 else:
                     st.error(f"❌ Incorrect. Correct answer: {correct_answer}")
+
+            if next_q:
+                st.session_state["quiz_idx"] += 1
+                st.experimental_rerun()
+
 # -------------------------------
 # SECTION: SRS REVIEW
 # -------------------------------
@@ -387,6 +397,7 @@ elif section == "SRS Review":
         if st.button("Clear deck"):
             st.session_state["deck"] = []
             st.experimental_rerun()
+
 
 
 
