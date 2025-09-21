@@ -151,7 +151,8 @@ file_content = read_file(uploaded_file) if uploaded_file else ""
 st.session_state["eli5_mode"] = eli5_mode
 # SECTION: TUTOR CHAT
 # -------------------------------
-with tabs[0]:  # Chat tab
+if section == "Tutor Chat":
+    # Chat code
     st.header("💬 Chat Mode")
 
     # Initialize history
@@ -375,6 +376,7 @@ elif section == "SRS Review":
         if st.button("Clear deck"):
             st.session_state["deck"] = []
             st.experimental_rerun()
+
 
 
 
