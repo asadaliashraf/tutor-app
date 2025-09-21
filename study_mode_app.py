@@ -152,8 +152,9 @@ st.session_state["eli5_mode"] = eli5_mode
 # SECTION: TUTOR CHAT
 # -------------------------------
 # Initialize chat history if not present
-if "chat_history" not in st.session_state:
-   # ---------------- Sidebar Chat ---------------- #
+    # ---------------- Sidebar Chat ---------------- #
+import streamlit as st
+
 st.sidebar.title("Study Assistant")
 
 # Conversation history
@@ -189,6 +190,7 @@ for msg in st.session_state.chat_history:
         st.sidebar.markdown(f"**You:** {msg['content']}")
     else:
         st.sidebar.markdown(f"**Assistant:** {msg['content']}")
+
 
 # -------------------------------
 # SECTION: FLASHCARDS
@@ -376,6 +378,7 @@ elif section == "SRS Review":
         if st.button("Clear deck"):
             st.session_state["deck"] = []
             st.experimental_rerun()
+
 
 
 
