@@ -142,7 +142,7 @@ User request:
 # -------------------------------
 st.sidebar.header("⚙️ Settings")
 section = st.sidebar.radio("Choose Section", ["Tutor Chat", "Flashcards", "Quiz", "SRS Review"])
-study_mode = st.sidebar.selectbox("Study Mode", ["practice", "exam", "explain_like_im_new"])
+study_mode = st.sidebar.selectbox("Study Mode", ["Practice", "Exam", "Explain like im new"])
 difficulty = st.sidebar.selectbox("Difficulty", ["beginner", "intermediate", "advanced"])
 uploaded_file = st.sidebar.file_uploader("📎 Upload a study file", type=["pdf", "docx", "txt"])
 file_content = read_file(uploaded_file) if uploaded_file else ""
@@ -324,5 +324,6 @@ elif section == "Quiz":
 elif section == "SRS Review":
     st.header("📚 Spaced Repetition Review")
     st.info("Future enhancement: review flashcards with scheduling.")
+
 
 
