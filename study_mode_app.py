@@ -104,33 +104,45 @@ def read_file(uploaded_file):
 def query_gemini(task_prompt, context="", mode="practice", difficulty="beginner"):
     headers = {"Content-Type": "application/json"}
     params = {"key": API_KEY}
-    full_prompt = f"{SYSTEM_INSTRUCTIONS}\n\nDifficulty: {difficulty}\nMode: {mode}\n\nContext:\n{context}\n\nUser request:\n{task_prompt}"
+
+    # Add ELI5 instruction if user enabled it
+    eli5_note = "Please explain in the simplest, beginner-friendly way, like I'm totally new here." if st.session_state.get("eli5_mode", False) else ""
+
+    full_prompt = f"""{SYSTEM_INSTRUCTIONS}
+    
+Difficulty: {difficulty}
+Mode: {mode}
+
+Context:
+{context}
+
+User request:
+{task_prompt}
+
+{eli5_note}
+"""
+
     data = {
         "contents": [
             {"role": "user", "parts": [{"text": full_prompt}]}
         ]
     }
-    response = requests.post(API_URL, headers=headers, params=params, json=data)
-    if response.status_code == 200:
-        try:
-            output = response.json()
-            return output["candidates"][0]["content"]["parts"][0]["text"]
-        except Exception:
-            return f"⚠️ Unexpected response format: {response.json()}"
-    else:
-        return f"❌ Error {response.status_code}: {response.text}"
 
+    response = requests.post(API_URL, headers=headers, params=params, json=data)
+    ...
 # -------------------------------
 # SIDEBAR CONTROLS
 # -------------------------------
+
 st.sidebar.header("⚙️ Settings")
 section = st.sidebar.radio("Choose Section", ["Tutor Chat", "Flashcards", "Quiz", "SRS Review"])
 study_mode = st.sidebar.selectbox("Study Mode", ["practice", "exam"])
 difficulty = st.sidebar.selectbox("Difficulty", ["beginner", "intermediate", "advanced"])
+eli5_mode = st.sidebar.checkbox("🍼 Explain like I'm new here (ELI5 mode)")
 uploaded_file = st.sidebar.file_uploader("📎 Upload a study file", type=["pdf", "docx", "txt"])
 file_content = read_file(uploaded_file) if uploaded_file else ""
-
 # -------------------------------
+st.session_state["eli5_mode"] = eli5_mode
 # SECTION: TUTOR CHAT
 # -------------------------------
 if section == "Tutor Chat":
@@ -345,4 +357,5 @@ elif section == "SRS Review":
         if st.button("Clear deck"):
             st.session_state["deck"] = []
             st.experimental_rerun()
+
 
