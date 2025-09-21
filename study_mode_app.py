@@ -85,6 +85,7 @@ IMPORTANT: Respond ONLY with valid JSON for Flashcards and Quizzes not for Chat.
 - For quizzes: respond with a JSON array of objects { "q": "...", "options": ["..."], "answerIndex": int }.
 - Do not wrap in code blocks.
 - For Chat do not use JSON 
+- For tutor chat give hint only when user ask for hint
 """
 # -------------------------------
 # HELPERS
@@ -374,6 +375,7 @@ elif section == "SRS Review":
         if st.button("Clear deck"):
             st.session_state["deck"] = []
             st.experimental_rerun()
+
 
 
 
