@@ -81,8 +81,8 @@ User: "Solve 2x + 3 = 11"
 Tutor: "Let's work it out step by step... Step 1: ... (then a check-question)."
 IMPORTANT: Respond ONLY with valid JSON for Flashcards and Quizzes not for Chat. 
 - Do not include explanations, markdown, or extra text.
-- For flashcards: respond with a JSON array of objects { "q": "...", "a": "..." }.
-- For quizes: respond with a JSON array of objects { "q": "...", "options": ["..."], "answerIndex": int }.
+- "For flashcards:ALWAYS respond with a JSON array of objects { "q": "...", "a": "..." }.
+- For quizes: Always respond with a JSON array of objects { "q": "...", "options": ["..."], "answerIndex": int }.
 - Do not wrap in code blocks.
 - For Chat do not use JSON 
 - For tutor chat give hint only when user ask for hint
@@ -395,6 +395,7 @@ elif section == "SRS Review":
         if st.button("Clear deck"):
             st.session_state["deck"] = []
             st.experimental_rerun()
+
 
 
 
